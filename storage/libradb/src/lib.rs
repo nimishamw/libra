@@ -748,7 +748,7 @@ impl DbReader for LibraDB {
     fn get_block_timestamp(&self, version: u64) -> Result<u64> {
         gauged_api("get_block_timestamp", || {
             let ts = match self.transaction_store.get_block_metadata(version)? {
-                Some((_v, block_meta)) => block_meta.into_inner()?.1,
+                Some((_v, block_meta)) => block_meta.into_inner().1,
                 // genesis timestamp is 0
                 None => 0,
             };
@@ -759,6 +759,12 @@ impl DbReader for LibraDB {
     fn get_latest_transaction_info_option(&self) -> Result<Option<(Version, TransactionInfo)>> {
         gauged_api("get_latest_transaction_info_option", || {
             self.ledger_store.get_latest_transaction_info_option()
+        })
+    }
+
+    fn get_accumulator_root_hash(&self, version: Version) -> Result<HashValue> {
+        gauged_api("get_accumulator_root_hash", || {
+            self.ledger_store.get_root_hash(version)
         })
     }
 }

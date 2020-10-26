@@ -7,6 +7,7 @@ use crate::{
     native_functions::FunctionContext,
     trace,
 };
+use fail::fail_point;
 use libra_logger::prelude::*;
 use move_core_types::{
     account_address::AccountAddress,
@@ -149,6 +150,7 @@ impl<L: LogContext> Interpreter<L> {
                         .map_err(|e| set_err_info!(current_frame, e))?;
                     if let Some(frame) = self.call_stack.pop() {
                         current_frame = frame;
+                        current_frame.pc += 1; // advance past the Call instruction in the caller
                     } else {
                         return Ok(());
                     }
@@ -169,6 +171,7 @@ impl<L: LogContext> Interpreter<L> {
                         .map_err(|e| set_err_info!(current_frame, e))?;
                     if func.is_native() {
                         self.call_native(&resolver, data_store, cost_strategy, func, vec![])?;
+                        current_frame.pc += 1; // advance past the Call instruction in the caller
                         continue;
                     }
                     let frame = self
@@ -203,6 +206,7 @@ impl<L: LogContext> Interpreter<L> {
                         .map_err(|e| set_err_info!(current_frame, e))?;
                     if func.is_native() {
                         self.call_native(&resolver, data_store, cost_strategy, func, ty_args)?;
+                        current_frame.pc += 1; // advance past the Call instruction in the caller
                         continue;
                     }
                     let frame = self
@@ -715,7 +719,14 @@ impl Frame {
                     &resolver,
                     &interpreter
                 );
-                self.pc += 1;
+
+                fail_point!("move_vm::interpreter_loop", |_| {
+                    Err(
+                        PartialVMError::new(StatusCode::VERIFIER_INVARIANT_VIOLATION).with_message(
+                            "Injected move_vm::interpreter verifier failure".to_owned(),
+                        ),
+                    )
+                });
 
                 match instruction {
                     Bytecode::Pop => {
@@ -1113,6 +1124,8 @@ impl Frame {
                         cost_strategy.charge_instr(Opcodes::NOP)?;
                     }
                 }
+                // invariant: advance to pc +1 is iff instruction at pc executed without aborting
+                self.pc += 1;
             }
             // ok we are out, it's a branch, check the pc for good luck
             // TODO: re-work the logic here. Tests should have a more

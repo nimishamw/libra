@@ -7,7 +7,8 @@ use libra_json_rpc_types::response::JsonRpcResponse;
 use libra_types::{
     account_address::AccountAddress,
     account_config::{
-        lbr_type_tag, testnet_dd_account_address, treasury_compliance_account_address, LBR_NAME,
+        coin1_tmp_tag, libra_root_address, testnet_dd_account_address,
+        treasury_compliance_account_address, COIN1_NAME,
     },
     chain_id::ChainId,
     transaction::SignedTransaction,
@@ -19,6 +20,7 @@ pub struct Env {
     pub url: String,
     pub tc: Account,
     pub dd: Account,
+    pub root: Account,
     pub vasps: Vec<Account>,
     pub client: reqwest::blocking::Client,
     allow_execution_failures: bool,
@@ -32,7 +34,8 @@ impl Env {
                 treasury_compliance_account_address(),
                 root_private_key.clone(),
             ),
-            dd: Account::new_with_address(testnet_dd_account_address(), root_private_key),
+            dd: Account::new_with_address(testnet_dd_account_address(), root_private_key.clone()),
+            root: Account::new_with_address(libra_root_address(), root_private_key),
             vasps: vec![],
             client: reqwest::blocking::Client::new(),
             allow_execution_failures: false,
@@ -66,7 +69,7 @@ impl Env {
         let vasp = Account::gen();
         let script =
             transaction_builder_generated::stdlib::encode_create_parent_vasp_account_script(
-                lbr_type_tag(),
+                coin1_tmp_tag(),
                 0, // sliding nonce
                 vasp.address,
                 vasp.auth_key().prefix().to_vec(),
@@ -81,7 +84,7 @@ impl Env {
     pub fn create_child_vasp(&mut self, parent_vasp_index: usize, amount: u64) {
         let child = Account::gen();
         let script = transaction_builder_generated::stdlib::encode_create_child_vasp_account_script(
-            lbr_type_tag(),
+            coin1_tmp_tag(),
             child.address,
             child.auth_key().prefix().to_vec(),
             false, /* add all currencies */
@@ -95,7 +98,7 @@ impl Env {
     pub fn transfer_coins_to_vasp(&mut self, index: usize, amount: u64) {
         let script =
             transaction_builder_generated::stdlib::encode_peer_to_peer_with_metadata_script(
-                lbr_type_tag(),
+                coin1_tmp_tag(),
                 self.vasps[index].address,
                 amount,
                 vec![],
@@ -126,7 +129,7 @@ impl Env {
         let receiver_address = self.vasps[rid].children[rcid].address;
         let script =
             transaction_builder_generated::stdlib::encode_peer_to_peer_with_metadata_script(
-                lbr_type_tag(),
+                coin1_tmp_tag(),
                 receiver_address,
                 amount,
                 // todo: add metadata
@@ -151,17 +154,28 @@ impl Env {
         account: &Account,
         script: libra_types::transaction::Script,
     ) -> SignedTransaction {
+        self.create_txn_by_payload(
+            account,
+            libra_types::transaction::TransactionPayload::Script(script),
+        )
+    }
+
+    pub fn create_txn_by_payload(
+        &self,
+        account: &Account,
+        payload: libra_types::transaction::TransactionPayload,
+    ) -> SignedTransaction {
         let seq = self
             .get_account_sequence(account.address.to_string())
             .expect("account should exist onchain for create transaction");
         libra_types::transaction::helpers::create_user_txn(
             account,
-            libra_types::transaction::TransactionPayload::Script(script),
+            payload,
             account.address,
             seq,
             1_000_000,
             0,
-            LBR_NAME.to_owned(),
+            COIN1_NAME.to_owned(),
             30,
             ChainId::test(),
         )
@@ -232,6 +246,10 @@ impl Env {
             assert_eq!(json.get("error"), None);
         }
         serde_json::from_value(json).expect("should be valid JsonRpcResponse")
+    }
+
+    pub fn get_account(&self, vasp_id: usize, child_id: usize) -> &Account {
+        &self.vasps[vasp_id].children[child_id]
     }
 }
 

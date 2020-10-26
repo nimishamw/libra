@@ -5,12 +5,13 @@
 use crate::{
     errors::JsonRpcError,
     views::{
-        AccountStateWithProofView, AccountView, BlockMetadata, CurrencyInfoView, EventView,
-        StateProofView, TransactionView,
+        AccountStateWithProofView, AccountView, BytesView, CurrencyInfoView, EventView,
+        MetadataView, StateProofView, TransactionView,
     },
 };
 use anyhow::{ensure, format_err, Error, Result};
 use core::future::Future;
+use fail::fail_point;
 use futures::{channel::oneshot, SinkExt};
 use libra_config::config::RoleType;
 use libra_crypto::hash::CryptoHash;
@@ -67,7 +68,29 @@ impl JsonRpcService {
         }
     }
 
+    fn get_account_state(
+        &self,
+        address: AccountAddress,
+        version: u64,
+    ) -> Result<Option<AccountState>> {
+        if let Some(blob) = self
+            .db
+            .get_account_state_with_proof_by_version(address, version)?
+            .0
+        {
+            Ok(Some(AccountState::try_from(&blob)?))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn get_latest_ledger_info(&self) -> Result<LedgerInfoWithSignatures> {
+        fail_point!("jsonrpc::get_latest_ledger_info", |_| {
+            Err(anyhow::anyhow!(
+                "Injected error for get latest ledger info error"
+            ))
+        });
+
         self.db.get_latest_ledger_info()
     }
 
@@ -101,7 +124,7 @@ type RpcHandler =
 pub(crate) type RpcRegistry = HashMap<String, RpcHandler>;
 
 pub(crate) struct JsonRpcRequest {
-    pub trace_id: u64,
+    pub trace_id: String,
     pub params: Vec<Value>,
     pub ledger_info: LedgerInfoWithSignatures,
 }
@@ -208,6 +231,11 @@ async fn submit(mut service: JsonRpcService, request: JsonRpcRequest) -> Result<
     trace_code_block!("json-rpc::submit", {"txn", transaction.sender(), transaction.sequence_number()});
 
     let (req_sender, callback) = oneshot::channel();
+
+    fail_point!("jsonrpc::method::submit::mempool_sender", |_| {
+        Err(anyhow::anyhow!("Injected error for mempool_sender call error").into())
+    });
+
     service
         .mempool_sender
         .send((transaction, req_sender))
@@ -229,17 +257,11 @@ async fn get_account(
     request: JsonRpcRequest,
 ) -> Result<Option<AccountView>> {
     let account_address: AccountAddress = request.parse_account_address(0)?;
-    let account_state_blob = service
-        .db
-        .get_account_state_with_proof_by_version(account_address, request.version())?
-        .0;
 
-    let blob = match account_state_blob {
+    let account_state = match service.get_account_state(account_address, request.version())? {
         Some(val) => val,
         None => return Ok(None),
     };
-
-    let account_state = AccountState::try_from(&blob)?;
     let account_resource = account_state
         .get_account_resource()?
         .ok_or_else(|| format_err!("invalid account data: no account resource"))?;
@@ -271,22 +293,44 @@ async fn get_account(
 /// Returns the blockchain metadata for a specified version. If no version is specified, default to
 /// returning the current blockchain metadata
 /// Can be used to verify that target Full Node is up-to-date
-async fn get_metadata(service: JsonRpcService, request: JsonRpcRequest) -> Result<BlockMetadata> {
+async fn get_metadata(service: JsonRpcService, request: JsonRpcRequest) -> Result<MetadataView> {
     let chain_id = service.chain_id().id();
-    if !request.params.is_empty() {
-        let version = request.parse_version_param(0, "version")?;
-        Ok(BlockMetadata {
-            version,
-            timestamp: service.db.get_block_timestamp(version)?,
-            chain_id,
-        })
+    let version = if !request.params.is_empty() {
+        request.parse_version_param(0, "version")?
     } else {
-        Ok(BlockMetadata {
-            version: request.version(),
-            timestamp: request.ledger_info.ledger_info().timestamp_usecs(),
-            chain_id,
-        })
+        request.version()
+    };
+
+    let mut script_hash_allow_list: Option<Vec<BytesView>> = None;
+    let mut module_publishing_allowed: Option<bool> = None;
+    let mut libra_version: Option<u64> = None;
+    if version == request.version() {
+        if let Some(account) = service.get_account_state(libra_root_address(), version)? {
+            if let Some(vm_publishing_option) = account.get_vm_publishing_option()? {
+                script_hash_allow_list = Some(
+                    vm_publishing_option
+                        .script_allow_list
+                        .iter()
+                        .map(|v| BytesView::from(v.to_vec()))
+                        .collect(),
+                );
+
+                module_publishing_allowed = Some(vm_publishing_option.is_open_module);
+            }
+            if let Some(v) = account.get_libra_version()? {
+                libra_version = Some(v.major)
+            }
+        }
     }
+    Ok(MetadataView {
+        version,
+        accumulator_root_hash: service.db.get_accumulator_root_hash(version)?.to_hex(),
+        timestamp: service.db.get_block_timestamp(version)?,
+        chain_id,
+        script_hash_allow_list,
+        module_publishing_allowed,
+        libra_version,
+    })
 }
 
 /// Returns transactions by range
@@ -419,12 +463,9 @@ async fn get_currencies(
     service: JsonRpcService,
     request: JsonRpcRequest,
 ) -> Result<Vec<CurrencyInfoView>> {
-    if let Some(blob) = service
-        .db
-        .get_account_state_with_proof_by_version(libra_root_address(), request.version())?
-        .0
+    if let Some(account_state) =
+        service.get_account_state(libra_root_address(), request.version())?
     {
-        let account_state = AccountState::try_from(&blob)?;
         Ok(account_state
             .get_registered_currency_info_resources()?
             .iter()
@@ -447,13 +488,16 @@ async fn get_account_transactions(
 
     service.validate_page_size_limit(limit as usize)?;
 
-    let account_seq = AccountResource::try_from(
-        &service
-            .db
-            .get_latest_account_state(account)?
-            .ok_or_else(|| format_err!("Account doesn't exist"))?,
-    )?
-    .sequence_number();
+    let account_state = service
+        .db
+        .get_latest_account_state(account)?
+        .ok_or_else(|| {
+            JsonRpcError::invalid_request_with_msg(format!(
+                "could not find account by address {}",
+                account
+            ))
+        })?;
+    let account_seq = AccountResource::try_from(&account_state)?.sequence_number();
 
     if start >= account_seq {
         return Ok(vec![]);
@@ -520,12 +564,19 @@ async fn get_state_proof(
 async fn get_account_state_with_proof(
     service: JsonRpcService,
     request: JsonRpcRequest,
-) -> Result<AccountStateWithProofView> {
+) -> Result<AccountStateWithProofView, JsonRpcError> {
     let account_address = request.parse_account_address(0)?;
 
     // If versions are specified by the request parameters, use them, otherwise use the defaults
     let version = request.parse_version_param(1, "version")?;
     let ledger_version = request.parse_version_param(2, "ledger version for proof")?;
+
+    if version > ledger_version {
+        return Err(JsonRpcError::invalid_request_with_msg(format!(
+            "version({}) should <= ledger version({})",
+            version, ledger_version
+        )));
+    }
 
     let account_state_with_proof =
         service

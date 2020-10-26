@@ -138,9 +138,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.32"
+version = "1.0.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b602bfe940d21c130f3895acd65221e8a61270debe89d628b9cb4e3ccb8569b"
+checksum = "a1fd36ffbb1fb7c834eac128ea8d0e310c5aeb635548f9d58861e1308d46e71c"
 
 [[package]]
 name = "arbitrary"
@@ -187,11 +187,11 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.40"
+version = "0.1.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "687c230d85c0a52504709705fc8a53e4a692b83a2184f03dae73e38e1e93a783"
+checksum = "b246867b8b3b6ae56035f1eb1ed557c1d8eae97f0d53696138a50fa0e3a3b8c0"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -242,16 +242,16 @@ dependencies = [
  "backup-service",
  "byteorder",
  "bytes",
- "dirs 3.0.1",
  "executor",
  "executor-test-helpers",
  "executor-types",
- "futures 0.3.5",
+ "futures 0.3.6",
  "hex",
  "itertools 0.9.0",
  "libra-canonical-serialization",
  "libra-config",
  "libra-crypto",
+ "libra-infallible",
  "libra-jellyfish-merkle",
  "libra-logger",
  "libra-proptest-helpers",
@@ -281,7 +281,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "futures 0.3.5",
+ "futures 0.3.6",
  "hyper",
  "libra-canonical-serialization",
  "libra-config",
@@ -313,6 +313,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
+name = "base64"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
+
+[[package]]
 name = "bindgen"
 version = "0.54.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -328,7 +334,7 @@ dependencies = [
  "lazycell",
  "log",
  "peeking_take_while",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "regex",
  "rustc-hash",
@@ -436,7 +442,7 @@ dependencies = [
 name = "bounded-executor"
 version = "0.1.0"
 dependencies = [
- "futures 0.3.5",
+ "futures 0.3.6",
  "futures-semaphore",
  "libra-workspace-hack",
  "tokio",
@@ -625,7 +631,8 @@ name = "channel"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "futures 0.3.5",
+ "futures 0.3.6",
+ "libra-infallible",
  "libra-metrics",
  "libra-types",
  "libra-workspace-hack",
@@ -634,9 +641,9 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.18"
+version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d021fddb7bd3e734370acfa4a83f34095571d8570c039f1420d77540f68d5772"
+checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
 dependencies = [
  "libc",
  "num-integer",
@@ -741,7 +748,7 @@ dependencies = [
  "consensus-types",
  "debug-interface",
  "flate2",
- "futures 0.3.5",
+ "futures 0.3.6",
  "generate-key",
  "hex",
  "itertools 0.9.0",
@@ -752,6 +759,7 @@ dependencies = [
  "libra-crypto",
  "libra-genesis-tool",
  "libra-global-constants",
+ "libra-infallible",
  "libra-json-rpc-client",
  "libra-logger",
  "libra-management",
@@ -763,7 +771,6 @@ dependencies = [
  "libra-retrier",
  "libra-secure-storage",
  "libra-swarm",
- "libra-time",
  "libra-trace",
  "libra-types",
  "libra-workspace-hack",
@@ -884,17 +891,17 @@ dependencies = [
  "executor-test-helpers",
  "executor-types",
  "fail",
- "futures 0.3.5",
+ "futures 0.3.6",
  "itertools 0.9.0",
  "libra-canonical-serialization",
  "libra-config",
  "libra-crypto",
+ "libra-infallible",
  "libra-logger",
  "libra-mempool",
  "libra-metrics",
  "libra-secure-storage",
  "libra-temppath",
- "libra-time",
  "libra-trace",
  "libra-types",
  "libra-vm",
@@ -930,7 +937,7 @@ dependencies = [
  "libra-canonical-serialization",
  "libra-crypto",
  "libra-crypto-derive",
- "libra-time",
+ "libra-infallible",
  "libra-types",
  "libra-workspace-hack",
  "mirai-annotations",
@@ -1447,7 +1454,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d2984c9b91ef2cd76b29bbc4b6f123b146e73a4bae7dbde490bd5115f6f8f7d"
 dependencies = [
  "once_cell",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -1506,6 +1513,7 @@ dependencies = [
  "libra-crypto",
  "libra-genesis-tool",
  "libra-global-constants",
+ "libra-infallible",
  "libra-logger",
  "libra-secure-net",
  "libra-secure-storage",
@@ -1536,6 +1544,7 @@ dependencies = [
  "libra-config",
  "libra-crypto",
  "libra-genesis-tool",
+ "libra-infallible",
  "libra-logger",
  "libra-metrics",
  "libra-secure-net",
@@ -1568,8 +1577,8 @@ dependencies = [
  "libra-config",
  "libra-crypto",
  "libra-genesis-tool",
+ "libra-infallible",
  "libra-logger",
- "libra-time",
  "libra-types",
  "libra-vm",
  "libra-workspace-hack",
@@ -1653,9 +1662,9 @@ checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "flate2"
-version = "1.0.17"
+version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "766d0e77a2c1502169d4a93ff3b8c15a71fd946cd0126309752104e5f3c46d94"
+checksum = "da80be589a72651dcda34d8b35bcdc9b7254ad06325611074d9cc0fbb19f60ee"
 dependencies = [
  "cfg-if",
  "crc32fast",
@@ -1750,9 +1759,9 @@ checksum = "1b980f2816d6ee8673b6517b52cb0e808a180efc92e5c19d02cdda79066703ef"
 
 [[package]]
 name = "futures"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e05b85ec287aac0dc34db7d4a569323df697f9c55b99b15d6b4ef8cde49f613"
+checksum = "5d8e3078b7b2a8a671cb7a3d17b4760e4181ea243227776ba83fd043b4ca034e"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -1765,9 +1774,9 @@ dependencies = [
 
 [[package]]
 name = "futures-channel"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f366ad74c28cca6ba456d95e6422883cfb4b252a83bed929c83abfdbbf2967d5"
+checksum = "a7a4d35f7401e948629c9c3d6638fb9bf94e0b2121e96c3b428cc4e631f3eb74"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -1775,15 +1784,15 @@ dependencies = [
 
 [[package]]
 name = "futures-core"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59f5fff90fd5d971f936ad674802482ba441b6f09ba5e15fd8b39145582ca399"
+checksum = "d674eaa0056896d5ada519900dbf97ead2e46a7b6621e8160d79e2f2e1e2784b"
 
 [[package]]
 name = "futures-executor"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10d6bb888be1153d3abeb9006b11b02cf5e9b209fda28693c31ae1e4e012e314"
+checksum = "cc709ca1da6f66143b8c9bec8e6260181869893714e9b5a490b169b0414144ab"
 dependencies = [
  "futures-core",
  "futures-task",
@@ -1792,18 +1801,18 @@ dependencies = [
 
 [[package]]
 name = "futures-io"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de27142b013a8e869c14957e6d2edeef89e97c289e69d042ee3a49acd8b51789"
+checksum = "5fc94b64bb39543b4e432f1790b6bf18e3ee3b74653c5449f63310e9a74b123c"
 
 [[package]]
 name = "futures-macro"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0b5a30a4328ab5473878237c447333c093297bded83a4983d10f4deea240d39"
+checksum = "f57ed14da4603b2554682e9f2ff3c65d7567b53188db96cb71538217fc64581b"
 dependencies = [
  "proc-macro-hack",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -1812,31 +1821,31 @@ dependencies = [
 name = "futures-semaphore"
 version = "0.1.0"
 dependencies = [
- "futures 0.3.5",
+ "futures 0.3.6",
  "libra-workspace-hack",
  "tokio",
 ]
 
 [[package]]
 name = "futures-sink"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f2032893cb734c7a05d85ce0cc8b8c4075278e93b24b66f9de99d6eb0fa8acc"
+checksum = "0d8764258ed64ebc5d9ed185cf86a95db5cac810269c5d20ececb32e0088abbd"
 
 [[package]]
 name = "futures-task"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdb66b5f09e22019b1ab0830f7785bcea8e7a42148683f99214f73f8ec21a626"
+checksum = "4dd26820a9f3637f1302da8bceba3ff33adbe53464b54ca24d4e2d4f1db30f94"
 dependencies = [
  "once_cell",
 ]
 
 [[package]]
 name = "futures-util"
-version = "0.3.5"
+version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8764574ff08b701a084482c3c7031349104b07ac897393010494beaa18ce32c6"
+checksum = "8a894a0acddba51a2d49a6f4263b1e64b8c579ece8af50fa86503d52cd1eea34"
 dependencies = [
  "futures-channel",
  "futures-core",
@@ -2077,7 +2086,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed18eb2459bf1a09ad2d6b1547840c3e5e62882fa09b9a6a20b1de8e3228848f"
 dependencies = [
- "base64",
+ "base64 0.12.3",
  "bitflags",
  "bytes",
  "headers-core",
@@ -2270,7 +2279,7 @@ checksum = "327869970574819d24d1dca25c891856144d29159ab797fa9dc725c5c3f57215"
 dependencies = [
  "anyhow",
  "proc-macro-hack",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -2460,7 +2469,7 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57f95fd36c08ce592e67400a0f1a66f432196997d5a7e9a97e8743c33d8a9312"
 dependencies = [
- "base64",
+ "base64 0.12.3",
  "bytes",
  "chrono",
  "serde",
@@ -2491,12 +2500,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4f52dbe2c0e7ca54e43f1bc7b77b916750e63d7694e5a18c09b11307acc6b9d"
 dependencies = [
  "Inflector",
- "base64",
+ "base64 0.12.3",
  "bytes",
  "chrono",
  "dirs 3.0.1",
  "either",
- "futures 0.3.5",
+ "futures 0.3.6",
  "futures-util",
  "http",
  "k8s-openapi",
@@ -2542,6 +2551,7 @@ dependencies = [
  "anyhow",
  "compiled-stdlib",
  "compiler",
+ "hex",
  "libra-canonical-serialization",
  "libra-config",
  "libra-crypto",
@@ -2575,10 +2585,12 @@ dependencies = [
  "libra-types",
  "libra-vm",
  "libra-workspace-hack",
+ "libra-writeset-generator",
  "move-core-types",
  "move-vm-runtime",
  "move-vm-types",
  "proptest",
+ "serde_json",
  "transaction-builder",
  "transaction-builder-generated",
  "vm",
@@ -2598,9 +2610,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.77"
+version = "0.2.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2f96b10ec2560088a8e76961b00d47107b3a625fecb76dedb29ee7ccbf98235"
+checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 
 [[package]]
 name = "libfuzzer-sys"
@@ -2723,7 +2735,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "libra-workspace-hack",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -2770,6 +2782,7 @@ dependencies = [
  "libra-canonical-serialization",
  "libra-config",
  "libra-crypto",
+ "libra-infallible",
  "libra-json-rpc-client",
  "libra-logger",
  "libra-types",
@@ -2830,6 +2843,7 @@ dependencies = [
  "rand 0.7.3",
  "rusty-fork",
  "safety-rules",
+ "serde_json",
  "sha-1 0.9.1",
  "state-synchronizer",
  "stats_alloc",
@@ -2876,7 +2890,7 @@ dependencies = [
 name = "libra-github-client"
 version = "0.1.0"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "libra-crypto",
  "libra-workspace-hack",
  "serde",
@@ -2890,6 +2904,13 @@ name = "libra-global-constants"
 version = "0.1.0"
 
 [[package]]
+name = "libra-infallible"
+version = "0.1.0"
+dependencies = [
+ "libra-workspace-hack",
+]
+
+[[package]]
 name = "libra-jellyfish-merkle"
 version = "0.1.0"
 dependencies = [
@@ -2898,6 +2919,7 @@ dependencies = [
  "libra-canonical-serialization",
  "libra-crypto",
  "libra-crypto-derive",
+ "libra-infallible",
  "libra-nibble",
  "libra-types",
  "libra-workspace-hack",
@@ -2919,7 +2941,8 @@ dependencies = [
  "compiled-stdlib",
  "executor",
  "executor-types",
- "futures 0.3.5",
+ "fail",
+ "futures 0.3.6",
  "generate-key",
  "hex",
  "hyper",
@@ -2977,6 +3000,7 @@ name = "libra-json-rpc-types"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "compiled-stdlib",
  "hex",
  "libra-canonical-serialization",
  "libra-crypto",
@@ -2997,7 +3021,7 @@ dependencies = [
  "executor",
  "executor-test-helpers",
  "executor-types",
- "futures 0.3.5",
+ "futures 0.3.6",
  "libra-config",
  "libra-crypto",
  "libra-genesis-tool",
@@ -3028,7 +3052,7 @@ name = "libra-log-derive"
 version = "0.1.0"
 dependencies = [
  "libra-workspace-hack",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -3041,8 +3065,8 @@ dependencies = [
  "erased-serde",
  "hex",
  "hostname",
+ "libra-infallible",
  "libra-log-derive",
- "libra-time",
  "libra-workspace-hack",
  "once_cell",
  "prometheus",
@@ -3089,16 +3113,17 @@ dependencies = [
  "anyhow",
  "bounded-executor",
  "channel",
- "futures 0.3.5",
+ "fail",
+ "futures 0.3.6",
  "itertools 0.9.0",
  "libra-canonical-serialization",
  "libra-config",
  "libra-crypto",
+ "libra-infallible",
  "libra-logger",
  "libra-metrics",
  "libra-network-address",
  "libra-proptest-helpers",
- "libra-time",
  "libra-trace",
  "libra-types",
  "libra-workspace-hack",
@@ -3123,7 +3148,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_approx_eq",
- "futures 0.3.5",
+ "futures 0.3.6",
  "hyper",
  "libra-logger",
  "libra-metrics-core",
@@ -3165,9 +3190,10 @@ dependencies = [
 name = "libra-network-address-encryption"
 version = "0.1.0"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "libra-canonical-serialization",
  "libra-global-constants",
+ "libra-infallible",
  "libra-logger",
  "libra-network-address",
  "libra-secure-storage",
@@ -3198,7 +3224,7 @@ dependencies = [
  "executor",
  "executor-types",
  "fail",
- "futures 0.3.5",
+ "futures 0.3.6",
  "jemallocator",
  "libra-config",
  "libra-crypto",
@@ -3281,7 +3307,7 @@ name = "libra-secure-json-rpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "futures 0.3.5",
+ "futures 0.3.6",
  "hex",
  "libra-canonical-serialization",
  "libra-config",
@@ -3329,7 +3355,7 @@ dependencies = [
 name = "libra-secure-storage"
 version = "0.1.0"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "chrono",
  "consensus-types",
  "enum_dispatch",
@@ -3338,6 +3364,7 @@ dependencies = [
  "libra-crypto-derive",
  "libra-github-client",
  "libra-global-constants",
+ "libra-infallible",
  "libra-logger",
  "libra-secure-time",
  "libra-temppath",
@@ -3354,7 +3381,7 @@ dependencies = [
 name = "libra-secure-time"
 version = "0.1.0"
 dependencies = [
- "libra-time",
+ "libra-infallible",
  "libra-workspace-hack",
 ]
 
@@ -3412,13 +3439,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libra-time"
-version = "0.1.0"
-dependencies = [
- "libra-workspace-hack",
-]
-
-[[package]]
 name = "libra-trace"
 version = "0.1.0"
 dependencies = [
@@ -3440,25 +3460,25 @@ name = "libra-transaction-replay"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "compiled-stdlib",
  "difference",
  "libra-canonical-serialization",
- "libra-json-rpc-client",
  "libra-state-view",
  "libra-types",
+ "libra-validator-interface",
  "libra-vm",
  "libra-workspace-hack",
  "libradb",
  "move-core-types",
  "move-lang",
  "move-vm-runtime",
+ "move-vm-test-utils",
  "move-vm-types",
- "reqwest",
  "resource-viewer",
- "scratchpad",
  "stdlib",
- "storage-interface",
  "structopt 0.3.18",
  "vm",
+ "vm-genesis",
 ]
 
 [[package]]
@@ -3473,9 +3493,9 @@ dependencies = [
  "libra-canonical-serialization",
  "libra-crypto",
  "libra-crypto-derive",
+ "libra-infallible",
  "libra-network-address",
  "libra-proptest-helpers",
- "libra-time",
  "libra-workspace-hack",
  "mirai-annotations",
  "move-core-types",
@@ -3493,10 +3513,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "libra-validator-interface"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "libra-canonical-serialization",
+ "libra-json-rpc-client",
+ "libra-state-view",
+ "libra-types",
+ "libra-workspace-hack",
+ "libradb",
+ "reqwest",
+ "scratchpad",
+ "storage-interface",
+]
+
+[[package]]
 name = "libra-vault-client"
 version = "0.1.0"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "chrono",
  "libra-crypto",
  "libra-proptest-helpers",
@@ -3516,6 +3552,7 @@ name = "libra-vm"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "fail",
  "libra-canonical-serialization",
  "libra-crypto",
  "libra-logger",
@@ -3575,6 +3612,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "libra-writeset-generator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "handlebars",
+ "libra-canonical-serialization",
+ "libra-types",
+ "libra-workspace-hack",
+ "move-lang",
+ "serde",
+ "serde_json",
+ "stdlib",
+ "structopt 0.3.18",
+ "tempfile",
+]
+
+[[package]]
 name = "libradb"
 version = "0.1.0"
 dependencies = [
@@ -3585,6 +3639,7 @@ dependencies = [
  "itertools 0.9.0",
  "libra-canonical-serialization",
  "libra-crypto",
+ "libra-infallible",
  "libra-jellyfish-merkle",
  "libra-logger",
  "libra-metrics",
@@ -3656,7 +3711,7 @@ name = "many-keys-stress-test"
 version = "0.1.0"
 dependencies = [
  "channel",
- "futures 0.3.5",
+ "futures 0.3.6",
  "libra-workspace-hack",
  "structopt 0.3.18",
 ]
@@ -3711,7 +3766,8 @@ name = "memsocket"
 version = "0.1.0"
 dependencies = [
  "bytes",
- "futures 0.3.5",
+ "futures 0.3.6",
+ "libra-infallible",
  "libra-workspace-hack",
  "once_cell",
 ]
@@ -3841,6 +3897,7 @@ dependencies = [
  "libra-vm",
  "libra-workspace-hack",
  "move-core-types",
+ "move-coverage",
  "move-lang",
  "move-vm-runtime",
  "move-vm-types",
@@ -3976,7 +4033,7 @@ dependencies = [
  "datatest-stable",
  "docgen",
  "errmapgen",
- "futures 0.3.5",
+ "futures 0.3.6",
  "handlebars",
  "hex",
  "itertools 0.9.0",
@@ -4022,7 +4079,6 @@ name = "move-vm-natives"
 version = "0.1.0"
 dependencies = [
  "libra-crypto",
- "libra-types",
  "libra-workspace-hack",
  "mirai-annotations",
  "move-core-types",
@@ -4039,11 +4095,12 @@ dependencies = [
  "anyhow",
  "bytecode-verifier",
  "compiler",
+ "fail",
  "hex",
  "libra-crypto",
+ "libra-infallible",
  "libra-logger",
  "libra-state-view",
- "libra-types",
  "libra-workspace-hack",
  "mirai-annotations",
  "move-core-types",
@@ -4141,7 +4198,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
- "futures 0.3.5",
+ "futures 0.3.6",
  "libra-logger",
  "libra-network-address",
  "libra-types",
@@ -4160,7 +4217,7 @@ dependencies = [
  "bytes",
  "channel",
  "criterion",
- "futures 0.3.5",
+ "futures 0.3.6",
  "futures-util",
  "hex",
  "libra-bitvec",
@@ -4168,11 +4225,11 @@ dependencies = [
  "libra-config",
  "libra-crypto",
  "libra-crypto-derive",
+ "libra-infallible",
  "libra-logger",
  "libra-metrics",
  "libra-network-address",
  "libra-proptest-helpers",
- "libra-time",
  "libra-types",
  "libra-workspace-hack",
  "memsocket",
@@ -4188,6 +4245,7 @@ dependencies = [
  "serde",
  "serde_bytes",
  "serial_test",
+ "short-hex-str",
  "socket-bench-server",
  "stream-ratelimiter",
  "thiserror",
@@ -4201,10 +4259,11 @@ name = "network-builder"
 version = "0.1.0"
 dependencies = [
  "channel",
- "futures 0.3.5",
+ "futures 0.3.6",
  "libra-canonical-serialization",
  "libra-config",
  "libra-crypto",
+ "libra-infallible",
  "libra-logger",
  "libra-metrics",
  "libra-network-address",
@@ -4229,7 +4288,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "channel",
- "futures 0.3.5",
+ "futures 0.3.6",
  "libra-canonical-serialization",
  "libra-config",
  "libra-crypto",
@@ -4365,7 +4424,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f09b9841adb6b5e1f89ef7087ea636e0fd94b2851f887c1e3eb5d5f8228fab3"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -4429,7 +4488,7 @@ name = "num-variants"
 version = "0.1.0"
 dependencies = [
  "libra-workspace-hack",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -4584,7 +4643,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7170d73bf11f39b4ce1809aabc95bf5c33564cdc16fc3200ddda17a5f6e5e48b"
 dependencies = [
- "base64",
+ "base64 0.12.3",
  "crypto-mac 0.9.1",
  "hmac 0.9.0",
  "rand 0.7.3",
@@ -4605,7 +4664,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59698ea79df9bf77104aefd39cc3ec990cb9693fb59c3b0a70ddf2646fdffb4b"
 dependencies = [
- "base64",
+ "base64 0.12.3",
  "once_cell",
  "regex",
 ]
@@ -4643,7 +4702,7 @@ checksum = "99b8db626e31e5b81787b9783425769681b347011cc59471e33ea46d2ea0cf55"
 dependencies = [
  "pest",
  "pest_meta",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -4671,20 +4730,20 @@ dependencies = [
 
 [[package]]
 name = "pin-project"
-version = "0.4.24"
+version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f48fad7cfbff853437be7cf54d7b993af21f53be7f0988cbfe4a51535aa77205"
+checksum = "13fbdfd6bdee3dc9be46452f86af4a4072975899cf8592466668620bebfbcc17"
 dependencies = [
  "pin-project-internal",
 ]
 
 [[package]]
 name = "pin-project-internal"
-version = "0.4.24"
+version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24c6d293bdd3ca5a1697997854c6cf7855e43fb6a0ba1c47af57a5bcafd158ae"
+checksum = "c82fb1329f632c3552cf352d14427d57a511b1cf41db93b3a7d77906a82dcc8e"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -4777,7 +4836,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
 dependencies = [
  "proc-macro-error-attr",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
  "version_check",
@@ -4789,7 +4848,7 @@ version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "version_check",
 ]
@@ -4817,9 +4876,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.23"
+version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51ef7cd2518ead700af67bf9d1a658d90b6037d77110fd9c0445429d0ba1c6c9"
+checksum = "1e0704ee1a7e00d7bb417d0770ea303c1bccbabf0ef1667dae92b5967f5f8a71"
 dependencies = [
  "unicode-xid 0.2.1",
 ]
@@ -4905,7 +4964,7 @@ version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa563d17ecb180e500da1cfd2b028310ac758de548efdd203e18f283af693f37"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
 ]
 
 [[package]]
@@ -5178,7 +5237,7 @@ version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d21b475ab879ef0e315ad99067fa25778c3b0377f57f1b00207448dac1a3144"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -5235,7 +5294,7 @@ version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "475e68978dc5b743f2f40d8e0a8fdc83f1c5e78cbf4b8fa5e74e73beebc340de"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -5247,7 +5306,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9eaa17ac5d7b838b7503d118fa16ad88f440498bf9ffe5424e621f93190d61e"
 dependencies = [
  "async-compression",
- "base64",
+ "base64 0.12.3",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -5327,7 +5386,7 @@ checksum = "7af1c42491edaa3b2582c6f3a0221f5ef4ed7a02c71cf1f614bb12877e1d44dd"
 dependencies = [
  "async-trait",
  "bytes",
- "futures 0.3.5",
+ "futures 0.3.6",
  "rusoto_core",
  "serde_urlencoded",
  "xml-rs",
@@ -5340,10 +5399,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e977941ee0658df96fca7291ecc6fc9a754600b21ad84b959eb1dbbc9d5abcc7"
 dependencies = [
  "async-trait",
- "base64",
+ "base64 0.12.3",
  "bytes",
  "crc32fast",
- "futures 0.3.5",
+ "futures 0.3.6",
  "http",
  "hyper",
  "hyper-tls",
@@ -5370,7 +5429,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "dirs 2.0.2",
- "futures 0.3.5",
+ "futures 0.3.6",
  "hyper",
  "pin-project",
  "regex",
@@ -5389,7 +5448,7 @@ checksum = "1146e37a7c1df56471ea67825fe09bbbd37984b5f6e201d8b2e0be4ee15643d8"
 dependencies = [
  "async-trait",
  "bytes",
- "futures 0.3.5",
+ "futures 0.3.6",
  "rusoto_core",
  "xml-rs",
 ]
@@ -5400,9 +5459,9 @@ version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97a740a88dde8ded81b6f2cff9cd5e054a5a2e38a38397260f7acdd2c85d17dd"
 dependencies = [
- "base64",
+ "base64 0.12.3",
  "bytes",
- "futures 0.3.5",
+ "futures 0.3.6",
  "hex",
  "hmac 0.8.1",
  "http",
@@ -5428,7 +5487,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "chrono",
- "futures 0.3.5",
+ "futures 0.3.6",
  "rusoto_core",
  "serde_urlencoded",
  "tempfile",
@@ -5441,7 +5500,7 @@ version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9dab61250775933275e84053ac235621dfb739556d5c54a2f2e9313b7cf43a19"
 dependencies = [
- "base64",
+ "base64 0.12.3",
  "blake2b_simd",
  "constant_time_eq",
  "crossbeam-utils",
@@ -5526,18 +5585,19 @@ name = "safety-rules"
 version = "0.1.0"
 dependencies = [
  "consensus-types",
+ "crash-handler",
  "criterion",
  "libra-canonical-serialization",
  "libra-config",
  "libra-crypto",
  "libra-global-constants",
+ "libra-infallible",
  "libra-logger",
  "libra-proptest-helpers",
  "libra-secure-net",
  "libra-secure-push-metrics",
  "libra-secure-storage",
  "libra-temppath",
- "libra-time",
  "libra-types",
  "libra-vault-client",
  "libra-workspace-hack",
@@ -5602,6 +5662,7 @@ version = "0.1.0"
 dependencies = [
  "itertools 0.9.0",
  "libra-crypto",
+ "libra-infallible",
  "libra-types",
  "libra-workspace-hack",
  "proptest",
@@ -5686,9 +5747,9 @@ dependencies = [
 
 [[package]]
 name = "serde-generate"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "055a9bee1a567f86479d9ff82cde1f06c8e5fc72a24c70c4614143800c4b8684"
+checksum = "e3e1b28129c98469c935544d1190586b7c73d9513c6c93e48359f455810b8c1b"
 dependencies = [
  "heck",
  "include_dir",
@@ -5756,16 +5817,16 @@ version = "1.0.116"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f630a6370fd8e457873b4bd2ffdae75408bc291ba72be773772a4c2a065d9ae8"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
 
 [[package]]
 name = "serde_json"
-version = "1.0.57"
+version = "1.0.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "164eacbdb13512ec2745fb09d51fd5b22b0d65ed294a1dcf7285a360c80a675c"
+checksum = "a230ea9107ca2220eea9d46de97eddcb04cd00e92d13dda78e478dd33fa82bd4"
 dependencies = [
  "itoa",
  "ryu",
@@ -5813,7 +5874,7 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65f59259be9fc1bf677d06cc1456e97756004a1a5a577480f71430bd7c17ba33"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -5962,6 +6023,7 @@ dependencies = [
  "libra-crypto",
  "libra-genesis-tool",
  "libra-global-constants",
+ "libra-infallible",
  "libra-json-rpc",
  "libra-key-manager",
  "libra-logger",
@@ -5973,7 +6035,6 @@ dependencies = [
  "libra-secure-time",
  "libra-swarm",
  "libra-temppath",
- "libra-time",
  "libra-trace",
  "libra-transaction-replay",
  "libra-types",
@@ -5993,7 +6054,7 @@ dependencies = [
 name = "socket-bench-server"
 version = "0.1.0"
 dependencies = [
- "futures 0.3.5",
+ "futures 0.3.6",
  "libra-config",
  "libra-crypto",
  "libra-logger",
@@ -6072,12 +6133,14 @@ dependencies = [
  "executor",
  "executor-test-helpers",
  "executor-types",
- "futures 0.3.5",
+ "fail",
+ "futures 0.3.6",
  "itertools 0.9.0",
  "libra-canonical-serialization",
  "libra-config",
  "libra-crypto",
  "libra-genesis-tool",
+ "libra-infallible",
  "libra-logger",
  "libra-mempool",
  "libra-metrics",
@@ -6088,6 +6151,7 @@ dependencies = [
  "libra-vm",
  "libra-workspace-hack",
  "libradb",
+ "memsocket",
  "netcore",
  "network",
  "network-builder",
@@ -6166,7 +6230,7 @@ version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c87a60a40fccc84bef0652345bbbbbe20a605bf5d0ce81719fc476f5c03b50ef"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "serde",
  "serde_derive",
@@ -6180,7 +6244,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58fa5ff6ad0d98d1ffa8cb115892b6e69d67799f6763e162a1c9db421dc22e11"
 dependencies = [
  "base-x",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "serde",
  "serde_derive",
@@ -6202,6 +6266,7 @@ dependencies = [
  "anyhow",
  "libra-canonical-serialization",
  "libra-crypto",
+ "libra-infallible",
  "libra-logger",
  "libra-secure-net",
  "libra-types",
@@ -6234,7 +6299,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "futures 0.3.5",
+ "futures 0.3.6",
  "itertools 0.9.0",
  "libra-canonical-serialization",
  "libra-config",
@@ -6257,7 +6322,7 @@ dependencies = [
 name = "stream-ratelimiter"
 version = "0.1.0"
 dependencies = [
- "futures 0.3.5",
+ "futures 0.3.6",
  "futures-semaphore",
  "libra-workspace-hack",
  "pin-project",
@@ -6311,7 +6376,7 @@ checksum = "c92e775028122a4b3dd55d58f14fc5120289c69bee99df1d117ae30f84b225c9"
 dependencies = [
  "heck",
  "proc-macro-error",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -6372,7 +6437,7 @@ version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c51d92969d209b54a98397e1b91c8ae82d8c87a7bb87df0b29aa2ad81454228"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "unicode-xid 0.2.1",
 ]
@@ -6383,7 +6448,7 @@ version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
  "unicode-xid 0.2.1",
@@ -6512,20 +6577,20 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.20"
+version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dfdd070ccd8ccb78f4ad66bf1982dc37f620ef696c6b5028fe2ed83dd3d0d08"
+checksum = "318234ffa22e0920fe9a40d7b8369b5f649d490980cf7aadcf1eb91594869b42"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.20"
+version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd80fc12f73063ac132ac92aceea36734f04a1d93c1240c6944e23a3b8841793"
+checksum = "cae2447b6282786c3493999f40a9be2a6ad20cb8bd268b0a0dbf5a065535c0ab"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -6582,7 +6647,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5c3be1edfad6027c69f5491cf4cb310d1a71ecd6af742788c6ff8bced86b8fa"
 dependencies = [
  "proc-macro-hack",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "standback",
  "syn 1.0.42",
@@ -6653,7 +6718,7 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0c3acc6aa564495a0f2e1d59fab677cd7f81a19994cfc7f3ad0e64301560389"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
 ]
@@ -6835,7 +6900,7 @@ version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0308d80d86700c5878b9ef6321f020f29b1bb9d5ff3cab25e75e23f3a492a23"
 dependencies = [
- "base64",
+ "base64 0.12.3",
  "byteorder",
  "bytes",
  "http",
@@ -6944,14 +7009,15 @@ dependencies = [
 
 [[package]]
 name = "ureq"
-version = "1.4.1"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7fb6c9aba13a511bcbb7770864c0e9b8392acda0454a71104498a2bb112d701"
+checksum = "ed21e32e4e3ff89891022affaa7091c3a164d5049cb3872f1cf0fd6ccd9fc8f7"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "chunked_transfer",
- "lazy_static",
+ "log",
  "native-tls",
+ "once_cell",
  "qstring",
  "serde",
  "serde_json",
@@ -7057,6 +7123,7 @@ dependencies = [
  "anyhow",
  "executor",
  "executor-test-helpers",
+ "fail",
  "libra-config",
  "libra-crypto",
  "libra-state-view",
@@ -7117,7 +7184,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f41be6df54c97904af01aa23e613d4521eed7ab23537cede692d4058f6449407"
 dependencies = [
  "bytes",
- "futures 0.3.5",
+ "futures 0.3.6",
  "headers",
  "http",
  "hyper",
@@ -7171,7 +7238,7 @@ dependencies = [
  "bumpalo",
  "lazy_static",
  "log",
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
  "wasm-bindgen-shared",
@@ -7205,7 +7272,7 @@ version = "0.2.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841a6d1c35c6f596ccea1f82504a192a60378f64b3bb0261904ad8f2f5657556"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
  "wasm-bindgen-backend",
@@ -7319,6 +7386,7 @@ dependencies = [
  "env_logger",
  "glob",
  "guppy",
+ "indexmap",
  "indoc",
  "libra-workspace-hack",
  "log",
@@ -7405,7 +7473,7 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de251eec69fc7c1bc3923403d18ececb929380e016afe103da75f396704f8ca2"
 dependencies = [
- "proc-macro2 1.0.23",
+ "proc-macro2 1.0.24",
  "quote 1.0.7",
  "syn 1.0.42",
  "synstructure",

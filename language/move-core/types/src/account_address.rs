@@ -45,6 +45,15 @@ impl AccountAddress {
         )
     }
 
+    pub fn short_str_lossless(&self) -> String {
+        let hex_str = hex::encode(&self.0).trim_start_matches('0').to_string();
+        if hex_str.is_empty() {
+            "0".to_string()
+        } else {
+            hex_str
+        }
+    }
+
     pub fn to_vec(&self) -> Vec<u8> {
         self.0.to_vec()
     }
@@ -111,21 +120,27 @@ impl AsRef<[u8]> for AccountAddress {
 
 impl fmt::Display for AccountAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> std::fmt::Result {
-        // Forward to the LowerHex impl with a "0x" prepended (the # flag).
-        write!(f, "{:#x}", self)
+        // Forward to the UpperHex impl with a "0x" prepended (the # flag).
+        write!(f, "{:#X}", self)
     }
 }
 
 impl fmt::Debug for AccountAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Forward to the LowerHex impl with a "0x" prepended (the # flag).
-        write!(f, "{:#x}", self)
+        // Forward to the UpperHex impl with a "0x" prepended (the # flag).
+        write!(f, "{:#X}", self)
     }
 }
 
 impl fmt::LowerHex for AccountAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", hex::encode(&self.0))
+    }
+}
+
+impl fmt::UpperHex for AccountAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode_upper(&self.0))
     }
 }
 
@@ -244,5 +259,48 @@ impl Serialize for AccountAddress {
             // See comment in deserialize.
             serializer.serialize_newtype_struct("AccountAddress", &self.0)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hex::FromHex;
+
+    #[test]
+    fn test_short_str_lossless() {
+        let hex = Vec::from_hex("00c0f1f95c5b1c5f0eda533eff269000")
+            .expect("You must provide a valid Hex format");
+
+        let address: AccountAddress = AccountAddress::try_from(&hex[..]).unwrap_or_else(|_| {
+            panic!(
+                "The address {:?} is of invalid length. Addresses must be 16-bytes long",
+                &hex
+            )
+        });
+
+        let string_lossless = address.short_str_lossless();
+
+        assert_eq!(
+            "c0f1f95c5b1c5f0eda533eff269000".to_string(),
+            string_lossless
+        );
+    }
+
+    #[test]
+    fn test_short_str_lossless_zero() {
+        let hex = Vec::from_hex("00000000000000000000000000000000")
+            .expect("You must provide a valid Hex format");
+
+        let address: AccountAddress = AccountAddress::try_from(&hex[..]).unwrap_or_else(|_| {
+            panic!(
+                "The address {:?} is of invalid length. Addresses must be 16-bytes long",
+                &hex
+            )
+        });
+
+        let string_lossless = address.short_str_lossless();
+
+        assert_eq!("0".to_string(), string_lossless);
     }
 }

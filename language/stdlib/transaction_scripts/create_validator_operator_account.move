@@ -22,13 +22,14 @@ use 0x1::SlidingNonce;
 /// | `human_name`          | `vector<u8>` | ASCII-encoded human name for the validator.                                                     |
 ///
 /// # Common Abort Conditions
-/// | Error Category | Error Reason | Description |
-/// |----------------|--------------|-------------|
+/// | Error Category              | Error Reason                            | Description                                                                                |
+/// | ----------------            | --------------                          | -------------                                                                              |
+/// | `Errors::NOT_PUBLISHED`     | `SlidingNonce::ESLIDING_NONCE`          | A `SlidingNonce` resource is not published under `lr_account`.                             |
 /// | `Errors::INVALID_ARGUMENT`  | `SlidingNonce::ENONCE_TOO_OLD`          | The `sliding_nonce` is too old and it's impossible to determine if it's duplicated or not. |
 /// | `Errors::INVALID_ARGUMENT`  | `SlidingNonce::ENONCE_TOO_NEW`          | The `sliding_nonce` is too far in the future.                                              |
 /// | `Errors::INVALID_ARGUMENT`  | `SlidingNonce::ENONCE_ALREADY_RECORDED` | The `sliding_nonce` has been previously recorded.                                          |
-/// | `Errors::NOT_PUBLISHED`     | `SlidingNonce::ESLIDING_NONCE`          | The sending account is not the Libra Root account or Treasury Compliance account           |
 /// | `Errors::REQUIRES_ADDRESS`  | `CoreAddresses::ELIBRA_ROOT`            | The sending account is not the Libra Root account.                                         |
+/// | `Errors::REQUIRES_ROLE`     | `Roles::ELIBRA_ROOT`                    | The sending account is not the Libra Root account.                                         |
 /// | `Errors::ALREADY_PUBLISHED` | `Roles::EROLE_ID`                       | The `new_account_address` address is already taken.                                        |
 ///
 /// # Related Scripts
@@ -65,6 +66,7 @@ fun create_validator_operator_account(
 ///   only Libra root has the Libra root role.
 spec fun create_validator_operator_account {
     use 0x1::Errors;
+    use 0x1::Roles;
 
     include LibraAccount::TransactionChecks{sender: lr_account}; // properties checked by the prologue.
     include SlidingNonce::RecordNonceAbortsIf{seq_nonce: sliding_nonce, account: lr_account};
@@ -77,5 +79,9 @@ spec fun create_validator_operator_account {
         Errors::REQUIRES_ADDRESS,
         Errors::ALREADY_PUBLISHED,
         Errors::REQUIRES_ROLE;
+
+    /// **Access Control:**
+    /// Only the Libra Root account can create Validator Operator accounts [[A4]][ROLE].
+    include Roles::AbortsIfNotLibraRoot{account: lr_account};
 }
 }

@@ -3,20 +3,14 @@
 script {
 use 0x1::Libra;
 use 0x1::Coin1::Coin1;
-use 0x1::Coin2::Coin2;
-// Make sure that Coin1 and Coin2 are registered. Make sure that the rules
+// Make sure that Coin1 is registered. Make sure that the rules
 // relating to SCS and synthetic currencies are consistent
 fun main() {
     assert(Libra::is_currency<Coin1>(), 1);
-    assert(Libra::is_currency<Coin2>(), 2);
     assert(!Libra::is_synthetic_currency<Coin1>(), 2);
-    assert(!Libra::is_synthetic_currency<Coin2>(), 3);
     assert(Libra::is_SCS_currency<Coin1>(), 4);
-    assert(Libra::is_SCS_currency<Coin2>(), 5);
     Libra::assert_is_currency<Coin1>();
-    Libra::assert_is_currency<Coin2>();
     Libra::assert_is_SCS_currency<Coin1>();
-    Libra::assert_is_SCS_currency<Coin2>();
 }
 }
 // check: "Keep(EXECUTED)"
@@ -98,3 +92,45 @@ fun main(lr_account: &signer) {
 }
 }
 // check: "Keep(ABORTED { code: 262,"
+
+//! new-transaction
+//! sender: libraroot
+script {
+use 0x1::Libra;
+use 0x1::FixedPoint32;
+use {{default}}::Holder;
+fun main(lr_account: &signer) {
+    let (a, b) = Libra::register_currency<u64>(
+        lr_account,
+        FixedPoint32::create_from_rational(1,1),
+        false,
+        0, // scaling factor
+        100,
+        x""
+    );
+    Holder::hold(lr_account, a);
+    Holder::hold(lr_account, b);
+}
+}
+// check: "Keep(ABORTED { code: 263,"
+
+//! new-transaction
+//! sender: libraroot
+script {
+use 0x1::Libra;
+use 0x1::FixedPoint32;
+use {{default}}::Holder;
+fun main(lr_account: &signer) {
+    let (a, b) = Libra::register_currency<u64>(
+        lr_account,
+        FixedPoint32::create_from_rational(1,1),
+        false,
+        1000000000000000, // scaling factor > MAX_SCALING_FACTOR
+        100,
+        x""
+    );
+    Holder::hold(lr_account, a);
+    Holder::hold(lr_account, b);
+}
+}
+// check: "Keep(ABORTED { code: 263,"

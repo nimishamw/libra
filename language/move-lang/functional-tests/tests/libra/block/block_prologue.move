@@ -4,7 +4,7 @@
 //! proposer: vivian
 //! block-time: 1000000
 
-// check: EventKey([22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 85, 12, 24])
+// check: EventKey([17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 85, 12, 24])
 // check: NewBlockEvent
 // check: 1000000
 
@@ -18,6 +18,7 @@ fun main() {
     assert(LibraTimestamp::now_microseconds() == 1000000, 76);
 }
 }
+// check: "Keep(EXECUTED)"
 
 //! new-transaction
 script{
@@ -27,6 +28,7 @@ fun main() {
     assert(LibraTimestamp::now_microseconds() != 2000000, 77);
 }
 }
+// check: "Keep(EXECUTED)"
 
 //! new-transaction
 //! sender: vivian

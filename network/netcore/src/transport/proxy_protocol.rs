@@ -60,7 +60,7 @@ pub async fn read_header<T: AsyncRead + std::marker::Unpin>(
     if header[0..12] != PPV2_SIGNATURE {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            "Invalid proxy protocol signature",
+            "ProxyProtocol: Invalid signature",
         ));
     }
 
@@ -71,7 +71,7 @@ pub async fn read_header<T: AsyncRead + std::marker::Unpin>(
         _ => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "Unsupported command or protocol version",
+                "ProxyProtocol: Unsupported command or protocol version",
             ));
         }
     };
@@ -96,13 +96,12 @@ pub async fn read_header<T: AsyncRead + std::marker::Unpin>(
             if address_size < IPV4_SIZE {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
-                    "Address size doesn't match type",
+                    "ProxyProtocol: Header size doesn't match expected address type",
                 ));
             }
 
             let src_addr = u32::from_be_bytes(address_bytes[0..4].try_into().unwrap());
             let src_port = u16::from_be_bytes(address_bytes[8..10].try_into().unwrap());
-            // TODO: What do we want to do about the destination information?
             let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::from(src_addr)), src_port);
             NetworkAddress::from(socket_addr)
         }
@@ -111,21 +110,20 @@ pub async fn read_header<T: AsyncRead + std::marker::Unpin>(
             if address_size < IPV6_SIZE {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
-                    "Address size doesn't match type",
+                    "ProxyProtocol: Header size doesn't match expected address type",
                 ));
             }
 
             let src_addr = u128::from_be_bytes(address_bytes[0..16].try_into().unwrap());
             let src_port = u16::from_be_bytes(address_bytes[32..34].try_into().unwrap());
 
-            // TODO: What do we want to do about the destination information?
             let socket_addr = SocketAddr::new(IpAddr::V6(Ipv6Addr::from(src_addr)), src_port);
             NetworkAddress::from(socket_addr)
         }
         _ => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                "Unsupported Address Family or Protocol",
+                "ProxyProtocol: Unsupported Address Family or Protocol",
             ));
         }
     };

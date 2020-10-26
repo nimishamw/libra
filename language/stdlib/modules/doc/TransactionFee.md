@@ -3,17 +3,33 @@
 
 # Module `0x1::TransactionFee`
 
+Functions to initialize, accumulated, and burn transaction fees.
 
 
--  [Resource <code><a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a></code>](#0x1_TransactionFee_TransactionFee)
--  [Const <code><a href="TransactionFee.md#0x1_TransactionFee_ETRANSACTION_FEE">ETRANSACTION_FEE</a></code>](#0x1_TransactionFee_ETRANSACTION_FEE)
--  [Function <code>initialize</code>](#0x1_TransactionFee_initialize)
--  [Function <code>is_coin_initialized</code>](#0x1_TransactionFee_is_coin_initialized)
--  [Function <code>is_initialized</code>](#0x1_TransactionFee_is_initialized)
--  [Function <code>add_txn_fee_currency</code>](#0x1_TransactionFee_add_txn_fee_currency)
--  [Function <code>pay_fee</code>](#0x1_TransactionFee_pay_fee)
--  [Function <code>burn_fees</code>](#0x1_TransactionFee_burn_fees)
--  [Module Specification](#@Module_Specification_0)
+-  [Resource `TransactionFee`](#0x1_TransactionFee_TransactionFee)
+-  [Constants](#@Constants_0)
+-  [Function `initialize`](#0x1_TransactionFee_initialize)
+-  [Function `is_coin_initialized`](#0x1_TransactionFee_is_coin_initialized)
+-  [Function `is_initialized`](#0x1_TransactionFee_is_initialized)
+-  [Function `add_txn_fee_currency`](#0x1_TransactionFee_add_txn_fee_currency)
+-  [Function `pay_fee`](#0x1_TransactionFee_pay_fee)
+-  [Function `burn_fees`](#0x1_TransactionFee_burn_fees)
+    -  [Specification of the case where burn type is LBR.](#@Specification_of_the_case_where_burn_type_is_LBR._1)
+    -  [Specification of the case where burn type is not LBR.](#@Specification_of_the_case_where_burn_type_is_not_LBR._2)
+-  [Module Specification](#@Module_Specification_3)
+    -  [Initialization](#@Initialization_4)
+    -  [Helper Function](#@Helper_Function_5)
+
+
+<pre><code><b>use</b> <a href="Coin1.md#0x1_Coin1">0x1::Coin1</a>;
+<b>use</b> <a href="CoreAddresses.md#0x1_CoreAddresses">0x1::CoreAddresses</a>;
+<b>use</b> <a href="Errors.md#0x1_Errors">0x1::Errors</a>;
+<b>use</b> <a href="LBR.md#0x1_LBR">0x1::LBR</a>;
+<b>use</b> <a href="Libra.md#0x1_Libra">0x1::Libra</a>;
+<b>use</b> <a href="LibraTimestamp.md#0x1_LibraTimestamp">0x1::LibraTimestamp</a>;
+<b>use</b> <a href="Roles.md#0x1_Roles">0x1::Roles</a>;
+</code></pre>
+
 
 
 <a name="0x1_TransactionFee_TransactionFee"></a>
@@ -51,9 +67,12 @@ fiat <code>CoinType</code> that can be collected as a transaction fee.
 
 </details>
 
-<a name="0x1_TransactionFee_ETRANSACTION_FEE"></a>
+<a name="@Constants_0"></a>
 
-## Const `ETRANSACTION_FEE`
+## Constants
+
+
+<a name="0x1_TransactionFee_ETRANSACTION_FEE"></a>
 
 A <code><a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a></code> resource is not in the required state
 
@@ -87,8 +106,6 @@ Called in genesis. Sets up the needed resources to collect transaction fees from
     <a href="Roles.md#0x1_Roles_assert_treasury_compliance">Roles::assert_treasury_compliance</a>(tc_account);
     // accept fees in all the currencies
     <a href="TransactionFee.md#0x1_TransactionFee_add_txn_fee_currency">add_txn_fee_currency</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;(tc_account);
-    <a href="TransactionFee.md#0x1_TransactionFee_add_txn_fee_currency">add_txn_fee_currency</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;(tc_account);
-    <a href="TransactionFee.md#0x1_TransactionFee_add_txn_fee_currency">add_txn_fee_currency</a>&lt;<a href="LBR.md#0x1_LBR">LBR</a>&gt;(tc_account);
 }
 </code></pre>
 
@@ -104,12 +121,8 @@ Called in genesis. Sets up the needed resources to collect transaction fees from
 <pre><code><b>include</b> <a href="LibraTimestamp.md#0x1_LibraTimestamp_AbortsIfNotGenesis">LibraTimestamp::AbortsIfNotGenesis</a>;
 <b>include</b> <a href="Roles.md#0x1_Roles_AbortsIfNotTreasuryCompliance">Roles::AbortsIfNotTreasuryCompliance</a>{account: tc_account};
 <b>include</b> <a href="TransactionFee.md#0x1_TransactionFee_AddTxnFeeCurrencyAbortsIf">AddTxnFeeCurrencyAbortsIf</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;;
-<b>include</b> <a href="TransactionFee.md#0x1_TransactionFee_AddTxnFeeCurrencyAbortsIf">AddTxnFeeCurrencyAbortsIf</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;;
-<b>include</b> <a href="TransactionFee.md#0x1_TransactionFee_AddTxnFeeCurrencyAbortsIf">AddTxnFeeCurrencyAbortsIf</a>&lt;<a href="LBR.md#0x1_LBR">LBR</a>&gt;;
 <b>ensures</b> <a href="TransactionFee.md#0x1_TransactionFee_is_initialized">is_initialized</a>();
-<b>ensures</b> <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;<a href="LBR.md#0x1_LBR">LBR</a>&gt;().balance.value == 0;
-<b>ensures</b> <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;().balance.value == 0;
-<b>ensures</b> <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;().balance.value == 0;
+<b>ensures</b> <a href="TransactionFee.md#0x1_TransactionFee_spec_transaction_fee">spec_transaction_fee</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;().balance.value == 0;
 </code></pre>
 
 
@@ -120,7 +133,8 @@ Called in genesis. Sets up the needed resources to collect transaction fees from
 
 <pre><code><b>schema</b> <a href="TransactionFee.md#0x1_TransactionFee_AddTxnFeeCurrencyAbortsIf">AddTxnFeeCurrencyAbortsIf</a>&lt;CoinType&gt; {
     <b>include</b> <a href="Libra.md#0x1_Libra_AbortsIfNoCurrency">Libra::AbortsIfNoCurrency</a>&lt;CoinType&gt;;
-    <b>aborts_if</b> <b>exists</b>&lt;<a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;CoinType&gt;&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_TREASURY_COMPLIANCE_ADDRESS">CoreAddresses::TREASURY_COMPLIANCE_ADDRESS</a>()) <b>with</b> <a href="Errors.md#0x1_Errors_ALREADY_PUBLISHED">Errors::ALREADY_PUBLISHED</a>;
+    <b>aborts_if</b> <b>exists</b>&lt;<a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;CoinType&gt;&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_TREASURY_COMPLIANCE_ADDRESS">CoreAddresses::TREASURY_COMPLIANCE_ADDRESS</a>())
+        <b>with</b> <a href="Errors.md#0x1_Errors_ALREADY_PUBLISHED">Errors::ALREADY_PUBLISHED</a>;
 }
 </code></pre>
 
@@ -168,7 +182,7 @@ Called in genesis. Sets up the needed resources to collect transaction fees from
 
 
 <pre><code><b>fun</b> <a href="TransactionFee.md#0x1_TransactionFee_is_initialized">is_initialized</a>(): bool {
-    <a href="TransactionFee.md#0x1_TransactionFee_is_coin_initialized">is_coin_initialized</a>&lt;<a href="LBR.md#0x1_LBR">LBR</a>&gt;() && <a href="TransactionFee.md#0x1_TransactionFee_is_coin_initialized">is_coin_initialized</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;() && <a href="TransactionFee.md#0x1_TransactionFee_is_coin_initialized">is_coin_initialized</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;()
+    <a href="TransactionFee.md#0x1_TransactionFee_is_coin_initialized">is_coin_initialized</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;()
 }
 </code></pre>
 
@@ -181,8 +195,8 @@ Called in genesis. Sets up the needed resources to collect transaction fees from
 ## Function `add_txn_fee_currency`
 
 Sets ups the needed transaction fee state for a given <code>CoinType</code> currency by
-(1) configuring <code>lr_account</code> to accept <code>CoinType</code>
-(2) publishing a wrapper of the <code>Preburn&lt;CoinType&gt;</code> resource under <code>lr_account</code>
+(1) configuring <code>tc_account</code> to accept <code>CoinType</code>
+(2) publishing a wrapper of the <code>Preburn&lt;CoinType&gt;</code> resource under <code>tc_account</code>
 
 
 <pre><code><b>public</b> <b>fun</b> <a href="TransactionFee.md#0x1_TransactionFee_add_txn_fee_currency">add_txn_fee_currency</a>&lt;CoinType&gt;(tc_account: &signer)
@@ -251,8 +265,8 @@ Deposit <code>coin</code> into the transaction fees bucket
 
 <pre><code><b>include</b> <a href="LibraTimestamp.md#0x1_LibraTimestamp_AbortsIfNotOperating">LibraTimestamp::AbortsIfNotOperating</a>;
 <b>aborts_if</b> !<a href="TransactionFee.md#0x1_TransactionFee_is_coin_initialized">is_coin_initialized</a>&lt;CoinType&gt;() <b>with</b> <a href="Errors.md#0x1_Errors_NOT_PUBLISHED">Errors::NOT_PUBLISHED</a>;
-<a name="0x1_TransactionFee_fees$13"></a>
-<b>let</b> fees = <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;CoinType&gt;().balance;
+<a name="0x1_TransactionFee_fees$8"></a>
+<b>let</b> fees = <a href="TransactionFee.md#0x1_TransactionFee_spec_transaction_fee">spec_transaction_fee</a>&lt;CoinType&gt;().balance;
 <b>include</b> <a href="Libra.md#0x1_Libra_DepositAbortsIf">Libra::DepositAbortsIf</a>&lt;CoinType&gt;{coin: fees, check: coin};
 <b>ensures</b> fees.value == <b>old</b>(fees.value) + coin.value;
 </code></pre>
@@ -287,27 +301,9 @@ underlying fiat.
     <b>assert</b>(<a href="TransactionFee.md#0x1_TransactionFee_is_coin_initialized">is_coin_initialized</a>&lt;CoinType&gt;(), <a href="Errors.md#0x1_Errors_not_published">Errors::not_published</a>(<a href="TransactionFee.md#0x1_TransactionFee_ETRANSACTION_FEE">ETRANSACTION_FEE</a>));
     <b>let</b> tc_address = <a href="CoreAddresses.md#0x1_CoreAddresses_TREASURY_COMPLIANCE_ADDRESS">CoreAddresses::TREASURY_COMPLIANCE_ADDRESS</a>();
     <b>if</b> (<a href="LBR.md#0x1_LBR_is_lbr">LBR::is_lbr</a>&lt;CoinType&gt;()) {
-        // extract fees
-        <b>let</b> fees = borrow_global_mut&lt;<a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;<a href="LBR.md#0x1_LBR">LBR</a>&gt;&gt;(tc_address);
-        <b>let</b> coins = <a href="Libra.md#0x1_Libra_withdraw_all">Libra::withdraw_all</a>&lt;<a href="LBR.md#0x1_LBR">LBR</a>&gt;(&<b>mut</b> fees.balance);
-        <b>let</b> (coin1, coin2) = <a href="LBR.md#0x1_LBR_unpack">LBR::unpack</a>(coins);
-        // burn
-        <b>let</b> coin1_burn_cap = <a href="Libra.md#0x1_Libra_remove_burn_capability">Libra::remove_burn_capability</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;(tc_account);
-        <b>let</b> coin2_burn_cap = <a href="Libra.md#0x1_Libra_remove_burn_capability">Libra::remove_burn_capability</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;(tc_account);
-        <a href="Libra.md#0x1_Libra_burn_now">Libra::burn_now</a>(
-            coin1,
-            &<b>mut</b> borrow_global_mut&lt;<a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;&gt;(tc_address).preburn,
-            tc_address,
-            &coin1_burn_cap
-        );
-        <a href="Libra.md#0x1_Libra_burn_now">Libra::burn_now</a>(
-            coin2,
-            &<b>mut</b> borrow_global_mut&lt;<a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;&gt;(tc_address).preburn,
-            tc_address,
-            &coin2_burn_cap
-        );
-        <a href="Libra.md#0x1_Libra_publish_burn_capability">Libra::publish_burn_capability</a>(tc_account, coin1_burn_cap);
-        <a href="Libra.md#0x1_Libra_publish_burn_capability">Libra::publish_burn_capability</a>(tc_account, coin2_burn_cap);
+        // TODO: Once the composition of <a href="LBR.md#0x1_LBR">LBR</a> is determined fill this in <b>to</b>
+        // <b>unpack</b> and burn the backing coins of the <a href="LBR.md#0x1_LBR">LBR</a> coin.
+        <b>abort</b> <a href="Errors.md#0x1_Errors_invalid_state">Errors::invalid_state</a>(<a href="TransactionFee.md#0x1_TransactionFee_ETRANSACTION_FEE">ETRANSACTION_FEE</a>)
     } <b>else</b> {
         // extract fees
         <b>let</b> fees = borrow_global_mut&lt;<a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;CoinType&gt;&gt;(tc_address);
@@ -333,12 +329,7 @@ underlying fiat.
 <summary>Specification</summary>
 
 
-
-<pre><code>pragma verify = <b>false</b>;
-</code></pre>
-
-
-Must abort if the account does not have the TreasuryCompliance role [B12].
+Must abort if the account does not have the TreasuryCompliance role [[H3]][PERMISSION].
 
 
 <pre><code><b>include</b> <a href="Roles.md#0x1_Roles_AbortsIfNotTreasuryCompliance">Roles::AbortsIfNotTreasuryCompliance</a>{account: tc_account};
@@ -352,18 +343,24 @@ The correct amount of fees is burnt and subtracted from market cap.
 
 
 <pre><code><b>ensures</b> <a href="Libra.md#0x1_Libra_spec_market_cap">Libra::spec_market_cap</a>&lt;CoinType&gt;()
-    == <b>old</b>(<a href="Libra.md#0x1_Libra_spec_market_cap">Libra::spec_market_cap</a>&lt;CoinType&gt;()) - <b>old</b>(<a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;CoinType&gt;().balance.value);
+    == <b>old</b>(<a href="Libra.md#0x1_Libra_spec_market_cap">Libra::spec_market_cap</a>&lt;CoinType&gt;()) - <b>old</b>(<a href="TransactionFee.md#0x1_TransactionFee_spec_transaction_fee">spec_transaction_fee</a>&lt;CoinType&gt;().balance.value);
 </code></pre>
 
 
 All the fees is burnt so the balance becomes 0.
 
 
-<pre><code><b>ensures</b> <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;CoinType&gt;().balance.value == 0;
+<pre><code><b>ensures</b> <a href="TransactionFee.md#0x1_TransactionFee_spec_transaction_fee">spec_transaction_fee</a>&lt;CoinType&gt;().balance.value == 0;
 </code></pre>
 
 
-Specification of the case where burn type is LBR.
+STUB: To be filled in at a later date once the makeup of the LBR has been determined.
+
+
+<a name="@Specification_of_the_case_where_burn_type_is_LBR._1"></a>
+
+### Specification of the case where burn type is LBR.
+
 
 
 <a name="0x1_TransactionFee_BurnFeesLBR"></a>
@@ -371,26 +368,16 @@ Specification of the case where burn type is LBR.
 
 <pre><code><b>schema</b> <a href="TransactionFee.md#0x1_TransactionFee_BurnFeesLBR">BurnFeesLBR</a> {
     tc_account: signer;
-    <b>include</b> <a href="Libra.md#0x1_Libra_AbortsIfNoBurnCapability">Libra::AbortsIfNoBurnCapability</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;{account: tc_account};
-    <b>include</b> <a href="Libra.md#0x1_Libra_AbortsIfNoBurnCapability">Libra::AbortsIfNoBurnCapability</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;{account: tc_account};
-    <a name="0x1_TransactionFee_lbr_fees$7"></a>
-    <b>let</b> lbr_fees = <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;<a href="LBR.md#0x1_LBR">LBR</a>&gt;();
-    <b>include</b> <a href="LBR.md#0x1_LBR_UnpackAbortsIf">LBR::UnpackAbortsIf</a>{coin: lbr_fees.balance};
-    <a name="0x1_TransactionFee_coin1_fees$8"></a>
-    <b>let</b> coin1_fees = <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;();
-    <a name="0x1_TransactionFee_coin1$9"></a>
-    <b>let</b> coin1 = <a href="Libra.md#0x1_Libra">Libra</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;{value: <a href="LBR.md#0x1_LBR_spec_unpack_coin1">LBR::spec_unpack_coin1</a>(lbr_fees.balance)};
-    <b>include</b> <a href="Libra.md#0x1_Libra_BurnNowAbortsIf">Libra::BurnNowAbortsIf</a>&lt;<a href="Coin1.md#0x1_Coin1">Coin1</a>&gt;{coin: coin1, preburn: coin1_fees.preburn};
-    <a name="0x1_TransactionFee_coin2_fees$10"></a>
-    <b>let</b> coin2_fees = <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;();
-    <a name="0x1_TransactionFee_coin2$11"></a>
-    <b>let</b> coin2 = <a href="Libra.md#0x1_Libra">Libra</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;{value: <a href="LBR.md#0x1_LBR_spec_unpack_coin2">LBR::spec_unpack_coin2</a>(lbr_fees.balance)};
-    <b>include</b> <a href="Libra.md#0x1_Libra_BurnNowAbortsIf">Libra::BurnNowAbortsIf</a>&lt;<a href="Coin2.md#0x1_Coin2">Coin2</a>&gt;{coin: coin2, preburn: coin2_fees.preburn};
+    <b>aborts_if</b> <b>true</b> <b>with</b> <a href="Errors.md#0x1_Errors_INVALID_STATE">Errors::INVALID_STATE</a>;
 }
 </code></pre>
 
 
-Specification of the case where burn type is not LBR.
+
+<a name="@Specification_of_the_case_where_burn_type_is_not_LBR._2"></a>
+
+### Specification of the case where burn type is not LBR.
+
 
 
 <a name="0x1_TransactionFee_BurnFeesNotLBR"></a>
@@ -402,19 +389,20 @@ Specification of the case where burn type is not LBR.
 </code></pre>
 
 
-Must abort if the account does not have BurnCapability [B12].
+Must abort if the account does not have BurnCapability [[H3]][PERMISSION].
 
 
 <pre><code><b>schema</b> <a href="TransactionFee.md#0x1_TransactionFee_BurnFeesNotLBR">BurnFeesNotLBR</a>&lt;CoinType&gt; {
     <b>include</b> <a href="Libra.md#0x1_Libra_AbortsIfNoBurnCapability">Libra::AbortsIfNoBurnCapability</a>&lt;CoinType&gt;{account: tc_account};
-    <a name="0x1_TransactionFee_fees$12"></a>
-    <b>let</b> fees = <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;CoinType&gt;();
+    <a name="0x1_TransactionFee_fees$7"></a>
+    <b>let</b> fees = <a href="TransactionFee.md#0x1_TransactionFee_spec_transaction_fee">spec_transaction_fee</a>&lt;CoinType&gt;();
     <b>include</b> <a href="Libra.md#0x1_Libra_BurnNowAbortsIf">Libra::BurnNowAbortsIf</a>&lt;CoinType&gt;{coin: fees.balance, preburn: fees.preburn};
 }
 </code></pre>
 
 
-tc_account retrieves BurnCapability [B12]. BurnCapability is not transferrable [D12].
+tc_account retrieves BurnCapability [[H3]][PERMISSION].
+BurnCapability is not transferrable [[J3]][PERMISSION].
 
 
 <pre><code><b>schema</b> <a href="TransactionFee.md#0x1_TransactionFee_BurnFeesNotLBR">BurnFeesNotLBR</a>&lt;CoinType&gt; {
@@ -426,10 +414,18 @@ tc_account retrieves BurnCapability [B12]. BurnCapability is not transferrable [
 
 </details>
 
-<a name="@Module_Specification_0"></a>
+<a name="@Module_Specification_3"></a>
 
 ## Module Specification
 
+
+
+<a name="@Initialization_4"></a>
+
+### Initialization
+
+
+If time has started ticking, then <code><a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a></code> resources have been initialized.
 
 
 <pre><code><b>invariant</b> [<b>global</b>] <a href="LibraTimestamp.md#0x1_LibraTimestamp_is_operating">LibraTimestamp::is_operating</a>() ==&gt; <a href="TransactionFee.md#0x1_TransactionFee_is_initialized">is_initialized</a>();
@@ -437,11 +433,22 @@ tc_account retrieves BurnCapability [B12]. BurnCapability is not transferrable [
 
 
 
+<a name="@Helper_Function_5"></a>
 
-<a name="0x1_TransactionFee_transaction_fee"></a>
+### Helper Function
 
 
-<pre><code><b>define</b> <a href="TransactionFee.md#0x1_TransactionFee_transaction_fee">transaction_fee</a>&lt;CoinType&gt;(): <a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;CoinType&gt; {
-borrow_global&lt;<a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;CoinType&gt;&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_TREASURY_COMPLIANCE_ADDRESS">CoreAddresses::TREASURY_COMPLIANCE_ADDRESS</a>())
+
+<a name="0x1_TransactionFee_spec_transaction_fee"></a>
+
+
+<pre><code><b>define</b> <a href="TransactionFee.md#0x1_TransactionFee_spec_transaction_fee">spec_transaction_fee</a>&lt;CoinType&gt;(): <a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;CoinType&gt; {
+   borrow_global&lt;<a href="TransactionFee.md#0x1_TransactionFee">TransactionFee</a>&lt;CoinType&gt;&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_TREASURY_COMPLIANCE_ADDRESS">CoreAddresses::TREASURY_COMPLIANCE_ADDRESS</a>())
 }
 </code></pre>
+
+
+[//]: # ("File containing references which can be used from documentation")
+[ACCESS_CONTROL]: https://github.com/libra/lip/blob/master/lips/lip-2.md
+[ROLE]: https://github.com/libra/lip/blob/master/lips/lip-2.md#roles
+[PERMISSION]: https://github.com/libra/lip/blob/master/lips/lip-2.md#permissions

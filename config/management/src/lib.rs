@@ -9,9 +9,10 @@ pub mod secure_backend;
 pub mod storage;
 pub mod transaction;
 pub mod validator_config;
+pub mod waypoint;
 
 pub mod constants {
-    use libra_types::account_config::LBR_NAME;
+    use libra_types::account_config::COIN1_NAME;
     pub const COMMON_NS: &str = "common";
     pub const LAYOUT: &str = "layout";
     pub const VALIDATOR_CONFIG: &str = "validator_config";
@@ -19,7 +20,7 @@ pub mod constants {
 
     pub const GAS_UNIT_PRICE: u64 = 0;
     pub const MAX_GAS_AMOUNT: u64 = 1_000_000;
-    pub const GAS_CURRENCY_CODE: &str = LBR_NAME;
+    pub const GAS_CURRENCY_CODE: &str = COIN1_NAME;
     pub const TXN_EXPIRATION_SECS: u64 = 3600;
 }
 
@@ -40,13 +41,16 @@ macro_rules! execute_command {
 use libra_crypto::ed25519::Ed25519PublicKey;
 use std::{convert::TryInto, fs, path::PathBuf};
 
+/// Reads a given ed25519 public key from file. Attempts to read the key using
+/// lcs encoding first. If this fails, attempts reading the key using hex.
 pub fn read_key_from_file(path: &PathBuf) -> Result<Ed25519PublicKey, String> {
-    let data = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    let data = data.trim();
-    if let Ok(key) = lcs::from_bytes(data.as_bytes()) {
+    let lcs_bytes = fs::read(path).map_err(|e| e.to_string())?;
+    if let Ok(key) = lcs::from_bytes(&lcs_bytes) {
         Ok(key)
     } else {
-        let key_data = hex::decode(&data).map_err(|e| e.to_string())?;
+        let hex_bytes = fs::read_to_string(path).map_err(|e| e.to_string())?;
+        let hex_bytes = hex_bytes.trim(); // Remove leading or trailing whitespace
+        let key_data = hex::decode(&hex_bytes).map_err(|e| e.to_string())?;
         key_data
             .as_slice()
             .try_into()

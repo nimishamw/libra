@@ -10,7 +10,7 @@ publish = false
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0.31"
+anyhow = "1.0.33"
 difference = "2.0.0"
 structopt = "0.3.18"
 
@@ -21,6 +21,7 @@ libra-workspace-hack = { path = "../../../common/workspace-hack", version = "0.1
 libra-state-view = { path = "../../../storage/state-view", version = "0.1.0" }
 libra-types = { path = "../../../types", version = "0.1.0" }
 libra-vm = { path = "../../libra-vm", version = "0.1.0" }
+move-coverage = { path = "../move-coverage", version = "0.1.0" }
 move-core-types = { path = "../../move-core/types", version = "0.1.0" }
 move-lang = { path = "../../move-lang", version = "0.0.1" }
 move-vm-types = { path = "../../move-vm/types", version = "0.1.0" }
@@ -35,3 +36,4 @@ lcs = { path = "../../../common/lcs", version = "0.1.0", package = "libra-canoni
 
 [[test]]
 name = "cli_testsuite"
+harness = false

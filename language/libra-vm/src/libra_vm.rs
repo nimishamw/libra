@@ -12,6 +12,7 @@ use crate::{
     system_module_names::*,
     transaction_metadata::TransactionMetadata,
 };
+use fail::fail_point;
 use libra_logger::prelude::*;
 use libra_state_view::StateView;
 use libra_types::{
@@ -19,7 +20,7 @@ use libra_types::{
     contract_event::ContractEvent,
     event::EventKey,
     on_chain_config::{ConfigStorage, LibraVersion, OnChainConfig, VMConfig, VMPublishingOption},
-    transaction::{ChangeSet, TransactionOutput, TransactionStatus},
+    transaction::{TransactionOutput, TransactionStatus},
     vm_status::{KeptVMStatus, StatusCode, VMStatus},
     write_set::{WriteOp, WriteSet, WriteSetMut},
 };
@@ -293,6 +294,12 @@ impl LibraVMImpl {
         account_currency_symbol: &IdentStr,
         log_context: &impl LogContext,
     ) -> Result<(), VMStatus> {
+        fail_point!("move_adapter::run_success_epilogue", |_| {
+            Err(VMStatus::Error(
+                StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR,
+            ))
+        });
+
         let gas_currency_ty =
             account_config::type_tag_for_currency_code(account_currency_symbol.to_owned());
         let txn_sequence_number = txn_data.sequence_number();
@@ -394,13 +401,10 @@ impl LibraVMImpl {
     pub(crate) fn run_writeset_epilogue<R: RemoteCache>(
         &self,
         session: &mut Session<R>,
-        change_set: &ChangeSet,
         txn_data: &TransactionMetadata,
         should_trigger_reconfiguration: bool,
         log_context: &impl LogContext,
     ) -> Result<(), VMStatus> {
-        let change_set_bytes = lcs::to_bytes(change_set)
-            .map_err(|_| VMStatus::Error(StatusCode::FAILED_TO_SERIALIZE_WRITE_SET_CHANGES))?;
         let gas_schedule = zero_cost_schedule();
         let mut cost_strategy = CostStrategy::system(&gas_schedule, GasUnits::new(0));
         session
@@ -410,7 +414,6 @@ impl LibraVMImpl {
                 vec![],
                 vec![
                     Value::transaction_argument_signer_reference(txn_data.sender),
-                    Value::vector_u8(change_set_bytes),
                     Value::u64(txn_data.sequence_number),
                     Value::bool(should_trigger_reconfiguration),
                 ],

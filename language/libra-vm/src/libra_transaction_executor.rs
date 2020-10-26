@@ -14,6 +14,7 @@ use crate::{
     transaction_metadata::TransactionMetadata,
     txn_effects_to_writeset_and_events, VMExecutor,
 };
+use fail::fail_point;
 use libra_logger::prelude::*;
 use libra_state_view::StateView;
 use libra_trace::prelude::*;
@@ -40,7 +41,7 @@ use move_vm_types::{
 use rayon::prelude::*;
 use std::{
     collections::HashSet,
-    convert::{AsMut, AsRef, TryFrom},
+    convert::{AsMut, AsRef},
 };
 
 pub struct LibraVM(LibraVMImpl);
@@ -158,6 +159,12 @@ impl LibraVM {
         account_currency_symbol: &IdentStr,
         log_context: &impl LogContext,
     ) -> Result<(VMStatus, TransactionOutput), VMStatus> {
+        fail_point!("move_adapter::execute_script", |_| {
+            Err(VMStatus::Error(
+                StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR,
+            ))
+        });
+
         let gas_schedule = self.0.get_gas_schedule(log_context)?;
         let mut session = self.0.new_session(remote_cache);
 
@@ -214,6 +221,12 @@ impl LibraVM {
         account_currency_symbol: &IdentStr,
         log_context: &impl LogContext,
     ) -> Result<(VMStatus, TransactionOutput), VMStatus> {
+        fail_point!("move_adapter::execute_module", |_| {
+            Err(VMStatus::Error(
+                StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR,
+            ))
+        });
+
         let gas_schedule = self.0.get_gas_schedule(log_context)?;
         let mut session = self.0.new_session(remote_cache);
 
@@ -421,6 +434,12 @@ impl LibraVM {
         block_metadata: BlockMetadata,
         log_context: &impl LogContext,
     ) -> Result<(VMStatus, TransactionOutput), VMStatus> {
+        fail_point!("move_adapter::process_block_prologue", |_| {
+            Err(VMStatus::Error(
+                StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR,
+            ))
+        });
+
         let mut txn_data = TransactionMetadata::default();
         txn_data.sender = account_config::reserved_vm_address();
 
@@ -428,30 +447,27 @@ impl LibraVM {
         let mut cost_strategy = CostStrategy::system(&gas_schedule, GasUnits::new(0));
         let mut session = self.0.new_session(remote_cache);
 
-        if let Ok((round, timestamp, previous_vote, proposer)) = block_metadata.into_inner() {
-            let args = vec![
-                Value::transaction_argument_signer_reference(txn_data.sender),
-                Value::u64(round),
-                Value::u64(timestamp),
-                Value::vector_address(previous_vote),
-                Value::address(proposer),
-            ];
-            session
-                .execute_function(
-                    &LIBRA_BLOCK_MODULE,
-                    &BLOCK_PROLOGUE,
-                    vec![],
-                    args,
-                    txn_data.sender,
-                    &mut cost_strategy,
-                    log_context,
-                )
-                .or_else(|e| {
-                    expect_only_successful_execution(e, BLOCK_PROLOGUE.as_str(), log_context)
-                })?
-        } else {
-            return Err(VMStatus::Error(StatusCode::MALFORMED));
-        };
+        let (round, timestamp, previous_vote, proposer) = block_metadata.into_inner();
+        let args = vec![
+            Value::transaction_argument_signer_reference(txn_data.sender),
+            Value::u64(round),
+            Value::u64(timestamp),
+            Value::vector_address(previous_vote),
+            Value::address(proposer),
+        ];
+        session
+            .execute_function(
+                &LIBRA_BLOCK_MODULE,
+                &BLOCK_PROLOGUE,
+                vec![],
+                args,
+                txn_data.sender,
+                &mut cost_strategy,
+                log_context,
+            )
+            .or_else(|e| {
+                expect_only_successful_execution(e, BLOCK_PROLOGUE.as_str(), log_context)
+            })?;
         SYSTEM_TRANSACTIONS_EXECUTED.inc();
 
         let output = get_transaction_output(
@@ -470,6 +486,12 @@ impl LibraVM {
         txn: SignatureCheckedTransaction,
         log_context: &impl LogContext,
     ) -> Result<(VMStatus, TransactionOutput), VMStatus> {
+        fail_point!("move_adapter::process_writeset_transaction", |_| {
+            Err(VMStatus::Error(
+                StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR,
+            ))
+        });
+
         let txn_data = TransactionMetadata::new(&txn);
 
         let mut session = self.0.new_session(remote_cache);
@@ -507,7 +529,6 @@ impl LibraVM {
         // Emit the reconfiguration event
         self.0.run_writeset_epilogue(
             &mut session,
-            &change_set,
             &txn_data,
             txn.payload().should_trigger_reconfiguration_by_default(),
             log_context,
@@ -620,17 +641,25 @@ impl LibraVM {
                 debug!(log_context, "Retry after reconfiguration");
                 continue;
             };
-            let (vm_status, output) = match txn {
+            let (vm_status, output, sender) = match txn {
                 Ok(PreprocessedTransaction::BlockPrologue(block_metadata)) => {
                     execute_block_trace_guard.clear();
                     current_block_id = block_metadata.id();
                     trace_code_block!("libra_vm::execute_block_impl", {"block", current_block_id}, execute_block_trace_guard);
-                    self.process_block_prologue(data_cache, block_metadata, &log_context)?
+                    let (vm_status, output) =
+                        self.process_block_prologue(data_cache, block_metadata, &log_context)?;
+                    (vm_status, output, Some("block_prologue".to_string()))
                 }
                 Ok(PreprocessedTransaction::WaypointWriteSet(write_set_payload)) => {
-                    self.process_waypoint_change_set(data_cache, write_set_payload, &log_context)?
+                    let (vm_status, output) = self.process_waypoint_change_set(
+                        data_cache,
+                        write_set_payload,
+                        &log_context,
+                    )?;
+                    (vm_status, output, Some("waypoint_write_set".to_string()))
                 }
                 Ok(PreprocessedTransaction::UserTransaction(txn)) => {
+                    let sender = txn.sender().to_string();
                     let _timer = TXN_TOTAL_SECONDS.start_timer();
                     let (vm_status, output) =
                         self.execute_user_transaction(data_cache, &txn, &log_context);
@@ -644,15 +673,30 @@ impl LibraVM {
                     if let Some(label) = counter_label {
                         USER_TRANSACTIONS_EXECUTED.with_label_values(&[label]).inc();
                     }
-                    (vm_status, output)
+                    (vm_status, output, Some(sender))
                 }
                 Ok(PreprocessedTransaction::WriteSet(txn)) => {
-                    self.process_writeset_transaction(data_cache, *txn, &log_context)?
+                    let (vm_status, output) =
+                        self.process_writeset_transaction(data_cache, *txn, &log_context)?;
+                    (vm_status, output, Some("write_set".to_string()))
                 }
-                Err(e) => discard_error_vm_status(e),
+                Err(e) => {
+                    let (vm_status, output) = discard_error_vm_status(e);
+                    (vm_status, output, None)
+                }
             };
             if !output.status().is_discarded() {
                 data_cache.push_write_set(output.write_set());
+            } else {
+                match sender {
+                    Some(s) => trace!(
+                        log_context,
+                        "Transaction discarded, sender: {}, error: {:?}",
+                        s,
+                        vm_status,
+                    ),
+                    None => trace!(log_context, "Transaction malformed, error: {:?}", vm_status,),
+                }
             }
 
             if is_reconfiguration(&output) {
@@ -670,10 +714,7 @@ impl LibraVM {
         }
 
         // Record the histogram count for transactions per block.
-        match i64::try_from(count) {
-            Ok(val) => BLOCK_TRANSACTION_COUNT.set(val),
-            Err(_) => BLOCK_TRANSACTION_COUNT.set(std::i64::MAX),
-        }
+        BLOCK_TRANSACTION_COUNT.observe(count as f64);
 
         Ok(result)
     }
@@ -736,6 +777,12 @@ impl VMExecutor for LibraVM {
         transactions: Vec<Transaction>,
         state_view: &dyn StateView,
     ) -> Result<Vec<TransactionOutput>, VMStatus> {
+        fail_point!("move_adapter::execute_block", |_| {
+            Err(VMStatus::Error(
+                StatusCode::UNKNOWN_INVARIANT_VIOLATION_ERROR,
+            ))
+        });
+
         let output = Self::execute_block_and_keep_vm_status(transactions, state_view)?;
         Ok(output
             .into_iter()

@@ -2,20 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use anyhow::{format_err, Error, Result};
+use compiled_stdlib::transaction_scripts::StdlibScript;
 use libra_crypto::HashValue;
 use libra_types::{
     account_config::{
-        AccountResource, AccountRole, BalanceResource, BaseUrlRotationEvent, BurnEvent,
-        CancelBurnEvent, ComplianceKeyRotationEvent, CreateAccountEvent, CurrencyInfoResource,
-        FreezingBit, MintEvent, NewBlockEvent, NewEpochEvent, PreburnEvent, ReceivedMintEvent,
-        ReceivedPaymentEvent, SentPaymentEvent, ToLBRExchangeRateUpdateEvent, UpgradeEvent,
+        AccountResource, AccountRole, AdminTransactionEvent, BalanceResource, BaseUrlRotationEvent,
+        BurnEvent, CancelBurnEvent, ComplianceKeyRotationEvent, CreateAccountEvent,
+        CurrencyInfoResource, FreezingBit, MintEvent, NewBlockEvent, NewEpochEvent, PreburnEvent,
+        ReceivedMintEvent, ReceivedPaymentEvent, SentPaymentEvent, ToLBRExchangeRateUpdateEvent,
     },
     account_state_blob::AccountStateWithProof,
     contract_event::ContractEvent,
     epoch_change::EpochChangeProof,
     ledger_info::LedgerInfoWithSignatures,
     proof::{AccountStateProof, AccumulatorConsistencyProof},
-    transaction::{Transaction, TransactionArgument, TransactionPayload},
+    transaction::{Script, Transaction, TransactionArgument, TransactionPayload},
     vm_status::KeptVMStatus,
 };
 use move_core_types::{
@@ -29,8 +30,8 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
     convert::{TryFrom, TryInto},
+    default::Default,
 };
-use transaction_builder::get_transaction_name;
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct AmountView {
@@ -166,8 +167,8 @@ pub enum EventDataView {
         sender: BytesView,
         metadata: BytesView,
     },
-    #[serde(rename = "upgrade")]
-    Upgrade { write_set: BytesView },
+    #[serde(rename = "admintransaction")]
+    AdminTransaction { committed_timestamp_secs: u64 },
     #[serde(rename = "newepoch")]
     NewEpoch { epoch: u64 },
     #[serde(rename = "newblock")]
@@ -192,7 +193,10 @@ pub enum EventDataView {
         time_rotated_seconds: u64,
     },
     #[serde(rename = "createaccount")]
-    CreateAccount {},
+    CreateAccount {
+        created_address: BytesView,
+        role_id: u64,
+    },
     #[serde(rename = "unknown")]
     Unknown {},
 }
@@ -306,12 +310,17 @@ impl TryFrom<ContractEvent> for EventDataView {
                 epoch: new_epoch_event.epoch(),
             }
         } else if event.type_tag() == &TypeTag::Struct(CreateAccountEvent::struct_tag()) {
-            EventDataView::CreateAccount {}
-        } else if event.type_tag() == &TypeTag::Struct(UpgradeEvent::struct_tag()) {
-            // TODO: missing test
-            let upgrade_event = UpgradeEvent::try_from(&event)?;
-            EventDataView::Upgrade {
-                write_set: BytesView::from(upgrade_event.write_set()),
+            let create_account_event = CreateAccountEvent::try_from(&event)?;
+            let created_address = BytesView::from(create_account_event.created().as_ref());
+            let role_id = create_account_event.role_id();
+            EventDataView::CreateAccount {
+                created_address,
+                role_id,
+            }
+        } else if event.type_tag() == &TypeTag::Struct(AdminTransactionEvent::struct_tag()) {
+            let admin_transaction_event = AdminTransactionEvent::try_from(&event)?;
+            EventDataView::AdminTransaction {
+                committed_timestamp_secs: admin_transaction_event.committed_timestamp_secs(),
             }
         } else {
             EventDataView::Unknown {}
@@ -335,10 +344,14 @@ impl TryFrom<(u64, ContractEvent)> for EventView {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct BlockMetadata {
+pub struct MetadataView {
     pub version: u64,
+    pub accumulator_root_hash: String,
     pub timestamp: u64,
     pub chain_id: u8,
+    pub script_hash_allow_list: Option<Vec<BytesView>>,
+    pub module_publishing_allowed: Option<bool>,
+    pub libra_version: Option<u64>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -482,42 +495,57 @@ pub enum TransactionDataView {
     UnknownTransaction {},
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(tag = "type")]
-// TODO cover all script types
-pub enum ScriptView {
-    #[serde(rename = "peer_to_peer_transaction")]
-    PeerToPeer {
-        receiver: String,
-        amount: u64,
-        currency: String,
-        metadata: BytesView,
-        metadata_signature: BytesView,
-    },
-    #[serde(rename = "mint_transaction")]
-    Mint {
-        receiver: String,
-        currency: String,
-        auth_key_prefix: BytesView,
-        amount: u64,
-    },
-    #[serde(rename = "unknown_transaction")]
-    Unknown {},
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq)]
+pub struct ScriptView {
+    // script name / type
+    pub r#type: String,
+
+    // script code bytes
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<BytesView>,
+    // script arguments, converted into string with type information.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<Vec<String>>,
+    // script type arguments, converted into string
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub type_arguments: Option<Vec<String>>,
+
+    // the following fields are legacy fields: maybe removed in the future
+    // please move to use above fields
+
+    // peer_to_peer_transaction, other known script name or unknown
+    // because of a bug, we never rendered mint_transaction
+    // this is deprecated, please switch to use field `name` which is script name
+
+    // peer_to_peer_transaction
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receiver: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub currency: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<BytesView>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_signature: Option<BytesView>,
 }
 
 impl ScriptView {
-    // TODO cover all script types
+    fn unknown() -> Self {
+        ScriptView {
+            r#type: "unknown".to_string(),
+            ..Default::default()
+        }
+    }
 }
 
 impl From<Transaction> for TransactionDataView {
     fn from(tx: Transaction) -> Self {
-        let x = match tx {
-            Transaction::BlockMetadata(t) => {
-                t.into_inner().map(|x| TransactionDataView::BlockMetadata {
-                    timestamp_usecs: x.1,
-                })
-            }
-            Transaction::GenesisTransaction(_) => Ok(TransactionDataView::WriteSet {}),
+        match tx {
+            Transaction::BlockMetadata(t) => TransactionDataView::BlockMetadata {
+                timestamp_usecs: t.timestamp_usec(),
+            },
+            Transaction::GenesisTransaction(_) => TransactionDataView::WriteSet {},
             Transaction::UserTransaction(t) => {
                 let script_hash = match t.payload() {
                     TransactionPayload::Script(s) => HashValue::sha3_256_of(s.code()),
@@ -531,7 +559,12 @@ impl From<Transaction> for TransactionDataView {
                 }
                 .into();
 
-                Ok(TransactionDataView::UserTransaction {
+                let script: ScriptView = match t.payload() {
+                    TransactionPayload::Script(s) => s.into(),
+                    _ => ScriptView::unknown(),
+                };
+
+                TransactionDataView::UserTransaction {
                     sender: t.sender().to_string(),
                     signature_scheme: t.authenticator().scheme().to_string(),
                     signature: hex::encode(t.authenticator().signature_bytes()),
@@ -544,12 +577,10 @@ impl From<Transaction> for TransactionDataView {
                     expiration_timestamp_secs: t.expiration_timestamp_secs(),
                     script_hash,
                     script_bytes,
-                    script: t.into_raw_transaction().into_payload().into(),
-                })
+                    script,
+                }
             }
-        };
-
-        x.unwrap_or(TransactionDataView::UnknownTransaction {})
+        }
     }
 }
 
@@ -605,65 +636,51 @@ impl From<AccountRole> for AccountRoleView {
     }
 }
 
-impl From<TransactionPayload> for ScriptView {
-    fn from(value: TransactionPayload) -> Self {
-        let empty_vec: Vec<TransactionArgument> = vec![];
-        let empty_ty_vec: Vec<String> = vec![];
-        let unknown_currency = "unknown_currency".to_string();
-
-        let (code, args, ty_args) = match value {
-            TransactionPayload::WriteSet(_) => ("genesis".to_string(), empty_vec, empty_ty_vec),
-            TransactionPayload::Script(script) => (
-                get_transaction_name(script.code()),
-                script.args().to_vec(),
+impl From<&Script> for ScriptView {
+    fn from(script: &Script) -> Self {
+        let name = StdlibScript::try_from(script.code())
+            .map_or("unknown".to_string(), |name| format!("{}", name));
+        let ty_args: Vec<String> = script
+            .ty_args()
+            .iter()
+            .map(|type_tag| match type_tag {
+                TypeTag::Struct(StructTag { module, .. }) => module.to_string(),
+                tag => format!("{}", tag),
+            })
+            .collect();
+        let mut view = ScriptView {
+            r#type: name.clone(),
+            code: Some(script.code().into()),
+            arguments: Some(
                 script
-                    .ty_args()
+                    .args()
                     .iter()
-                    .map(|type_tag| match type_tag {
-                        TypeTag::Struct(StructTag { module, .. }) => module.to_string(),
-                        tag => format!("{}", tag),
-                    })
+                    .map(|arg| format!("{:?}", &arg))
                     .collect(),
             ),
-            TransactionPayload::Module(_) => {
-                ("module publishing".to_string(), empty_vec, empty_ty_vec)
-            }
+            type_arguments: Some(ty_args.clone()),
+            ..Default::default()
         };
 
-        let res = match code.as_str() {
-            "peer_to_peer_with_metadata_transaction" => {
-                if let [TransactionArgument::Address(receiver), TransactionArgument::U64(amount), TransactionArgument::U8Vector(metadata), TransactionArgument::U8Vector(metadata_signature)] =
-                    &args[..]
-                {
-                    Ok(ScriptView::PeerToPeer {
-                        receiver: receiver.to_string(),
-                        amount: *amount,
-                        currency: ty_args.get(0).unwrap_or(&unknown_currency).to_string(),
-                        metadata: BytesView::from(metadata),
-                        metadata_signature: BytesView::from(metadata_signature),
-                    })
-                } else {
-                    Err(format_err!("Unable to parse PeerToPeer arguments"))
-                }
+        // handle legacy fields, backward compatible
+        if name == "peer_to_peer_with_metadata" {
+            if let [TransactionArgument::Address(receiver), TransactionArgument::U64(amount), TransactionArgument::U8Vector(metadata), TransactionArgument::U8Vector(metadata_signature)] =
+                &script.args()[..]
+            {
+                view.receiver = Some(receiver.to_string());
+                view.amount = Some(*amount);
+                view.currency = Some(
+                    ty_args
+                        .get(0)
+                        .unwrap_or(&"unknown_currency".to_string())
+                        .to_string(),
+                );
+                view.metadata = Some(BytesView::from(metadata));
+                view.metadata_signature = Some(BytesView::from(metadata_signature));
             }
-            "mint" => {
-                if let [TransactionArgument::Address(receiver), TransactionArgument::U8Vector(auth_key_prefix), TransactionArgument::U64(amount)] =
-                    &args[..]
-                {
-                    let currency = ty_args.get(0).unwrap_or(&unknown_currency).to_string();
-                    Ok(ScriptView::Mint {
-                        receiver: receiver.to_string(),
-                        auth_key_prefix: BytesView::from(auth_key_prefix),
-                        amount: *amount,
-                        currency,
-                    })
-                } else {
-                    Err(format_err!("Unable to parse PeerToPeer arguments"))
-                }
-            }
-            _ => Err(format_err!("Unknown scripts")),
-        };
-        res.unwrap_or(ScriptView::Unknown {})
+        }
+
+        view
     }
 }
 

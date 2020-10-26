@@ -6,7 +6,6 @@ use crate::{
     account_config::libra_root_address,
     event::{EventHandle, EventKey},
 };
-use anyhow::Result;
 use libra_crypto::HashValue;
 use move_core_types::move_resource::MoveResource;
 use once_cell::sync::Lazy;
@@ -54,13 +53,17 @@ impl BlockMetadata {
         self.id
     }
 
-    pub fn into_inner(self) -> Result<(u64, u64, Vec<AccountAddress>, AccountAddress)> {
-        Ok((
+    pub fn into_inner(self) -> (u64, u64, Vec<AccountAddress>, AccountAddress) {
+        (
             self.round,
             self.timestamp_usecs,
             self.previous_block_votes.clone(),
             self.proposer,
-        ))
+        )
+    }
+
+    pub fn timestamp_usec(&self) -> u64 {
+        self.timestamp_usecs
     }
 
     pub fn proposer(&self) -> AccountAddress {
@@ -69,7 +72,7 @@ impl BlockMetadata {
 }
 
 pub fn new_block_event_key() -> EventKey {
-    EventKey::new_from_address(&libra_root_address(), 22)
+    EventKey::new_from_address(&libra_root_address(), 17)
 }
 
 /// The path to the new block event handle under a LibraBlock::BlockMetadata resource.

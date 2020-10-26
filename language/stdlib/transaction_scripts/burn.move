@@ -39,6 +39,7 @@ use 0x1::SlidingNonce;
 /// # Common Abort Conditions
 /// | Error Category                | Error Reason                            | Description                                                                                           |
 /// | ----------------              | --------------                          | -------------                                                                                         |
+/// | `Errors::NOT_PUBLISHED`       | `SlidingNonce::ESLIDING_NONCE`          | A `SlidingNonce` resource is not published under `account`.                                           |
 /// | `Errors::INVALID_ARGUMENT`    | `SlidingNonce::ENONCE_TOO_OLD`          | The `sliding_nonce` is too old and it's impossible to determine if it's duplicated or not.            |
 /// | `Errors::INVALID_ARGUMENT`    | `SlidingNonce::ENONCE_TOO_NEW`          | The `sliding_nonce` is too far in the future.                                                         |
 /// | `Errors::INVALID_ARGUMENT`    | `SlidingNonce::ENONCE_ALREADY_RECORDED` | The `sliding_nonce` has been previously recorded.                                                     |
@@ -70,6 +71,10 @@ spec fun burn {
         Errors::REQUIRES_CAPABILITY,
         Errors::NOT_PUBLISHED,
         Errors::INVALID_STATE,
-        Errors::LIMIT_EXCEEDED; // TODO: Undocumented error code. Can be caused by Libra.move:544.
+        Errors::LIMIT_EXCEEDED;
+
+    /// **Access Control:**
+    /// Only the account with the burn capability can burn coins [[H3]][PERMISSION].
+    include Libra::AbortsIfNoBurnCapability<Token>{account: account};
 }
 }

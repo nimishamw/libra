@@ -17,8 +17,10 @@ use structopt::StructOpt;
 pub enum Command {
     #[structopt(about = "Displays the current account resource on the blockchain")]
     AccountResource(crate::account_resource::AccountResource),
-    #[structopt(about = "Remove a validator from ValidatorSet")]
+    #[structopt(about = "Adds a validator to the ValidatorSet")]
     AddValidator(crate::governance::AddValidator),
+    #[structopt(about = "Check an endpoint for a listening socket")]
+    CheckEndpoint(crate::network_checker::CheckEndpoint),
     #[structopt(about = "Create a new validator account")]
     CreateValidator(crate::governance::CreateValidator),
     #[structopt(about = "Create a new validator operator account")]
@@ -28,7 +30,7 @@ pub enum Command {
     #[structopt(about = "Extract a public key from the validator storage")]
     ExtractPublicKey(crate::keys::ExtractPublicKey),
     #[structopt(about = "Set the waypoint in the validator storage")]
-    InsertWaypoint(crate::waypoint::InsertWaypoint),
+    InsertWaypoint(libra_management::waypoint::InsertWaypoint),
     #[structopt(about = "Prints an account from the validator storage")]
     PrintAccount(crate::account::PrintAccount),
     #[structopt(about = "Remove a validator from ValidatorSet")]
@@ -57,6 +59,7 @@ pub enum Command {
 pub enum CommandName {
     AccountResource,
     AddValidator,
+    CheckEndpoint,
     CreateValidator,
     CreateValidatorOperator,
     ExtractPrivateKey,
@@ -80,6 +83,7 @@ impl From<&Command> for CommandName {
         match command {
             Command::AccountResource(_) => CommandName::AccountResource,
             Command::AddValidator(_) => CommandName::AddValidator,
+            Command::CheckEndpoint(_) => CommandName::CheckEndpoint,
             Command::CreateValidator(_) => CommandName::CreateValidator,
             Command::CreateValidatorOperator(_) => CommandName::CreateValidatorOperator,
             Command::ExtractPrivateKey(_) => CommandName::ExtractPrivateKey,
@@ -105,6 +109,7 @@ impl std::fmt::Display for CommandName {
         let name = match self {
             CommandName::AccountResource => "account-resource",
             CommandName::AddValidator => "add-validator",
+            CommandName::CheckEndpoint => "check-endpoint",
             CommandName::CreateValidator => "create-validator",
             CommandName::CreateValidatorOperator => "create-validator-operator",
             CommandName::ExtractPrivateKey => "extract-private-key",
@@ -131,6 +136,7 @@ impl Command {
         match self {
             Command::AccountResource(cmd) => Self::pretty_print(cmd.execute()),
             Command::AddValidator(cmd) => Self::pretty_print(cmd.execute()),
+            Command::CheckEndpoint(cmd) => Self::pretty_print(cmd.execute()),
             Command::CreateValidator(cmd) => Self::pretty_print(cmd.execute()),
             Command::CreateValidatorOperator(cmd) => Self::pretty_print(cmd.execute()),
             Command::InsertWaypoint(cmd) => Self::print_success(cmd.execute()),
@@ -188,6 +194,22 @@ impl Command {
 
     pub fn add_validator(self) -> Result<TransactionContext, Error> {
         execute_command!(self, Command::AddValidator, CommandName::AddValidator)
+    }
+
+    pub fn check_endpoint(self) -> Result<String, Error> {
+        execute_command!(self, Command::CheckEndpoint, CommandName::CheckEndpoint)
+    }
+
+    pub fn create_validator(self) -> Result<(TransactionContext, AccountAddress), Error> {
+        execute_command!(self, Command::CreateValidator, CommandName::CreateValidator)
+    }
+
+    pub fn create_validator_operator(self) -> Result<(TransactionContext, AccountAddress), Error> {
+        execute_command!(
+            self,
+            Command::CreateValidatorOperator,
+            CommandName::CreateValidatorOperator
+        )
     }
 
     pub fn extract_private_key(self) -> Result<(), Error> {
@@ -259,6 +281,14 @@ impl Command {
             self,
             Command::SetValidatorConfig,
             CommandName::SetValidatorConfig
+        )
+    }
+
+    pub fn set_validator_operator(self) -> Result<TransactionContext, Error> {
+        execute_command!(
+            self,
+            Command::SetValidatorOperator,
+            CommandName::SetValidatorOperator
         )
     }
 

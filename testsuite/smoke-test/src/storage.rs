@@ -2,20 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    test_utils::{compare_balances, setup_swarm_and_client_proxy},
+    test_utils::{
+        compare_balances,
+        libra_swarm_utils::{insert_waypoint, load_node_config, save_node_config},
+        setup_swarm_and_client_proxy,
+    },
     workspace_builder,
     workspace_builder::workspace_root,
 };
 use anyhow::{bail, Result};
 use backup_cli::metadata::view::BackupStorageState;
 use cli::client_proxy::ClientProxy;
-use libra_config::config::NodeConfig;
 use libra_temppath::TempPath;
 use libra_types::transaction::Version;
 use rand::random;
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::Path,
     process::Command,
     string::ToString,
     sync::{
@@ -27,52 +30,54 @@ use std::{
 
 #[test]
 fn test_db_restore() {
-    let (mut env, mut client1) = setup_swarm_and_client_proxy(7, 1);
+    let (mut env, mut client) = setup_swarm_and_client_proxy(4, 1);
 
     // pre-build tools
     workspace_builder::get_bin("db-backup");
     workspace_builder::get_bin("db-restore");
+    workspace_builder::get_bin("db-backup-verify");
 
     // set up: two accounts, a lot of money
-    client1.create_next_account(false).unwrap();
-    client1.create_next_account(false).unwrap();
-    client1
+    client.create_next_account(false).unwrap();
+    client.create_next_account(false).unwrap();
+    client
         .mint_coins(&["mb", "0", "1000000", "Coin1"], true)
         .unwrap();
-    client1
+    client
         .mint_coins(&["mb", "1", "1000000", "Coin1"], true)
         .unwrap();
-    client1
+    client
         .transfer_coins(&["tb", "0", "1", "1", "Coin1"], true)
         .unwrap();
     assert!(compare_balances(
         vec![(999999.0, "Coin1".to_string())],
-        client1.get_balances(&["b", "0"]).unwrap(),
+        client.get_balances(&["b", "0"]).unwrap(),
     ));
     assert!(compare_balances(
         vec![(1000001.0, "Coin1".to_string())],
-        client1.get_balances(&["b", "1"]).unwrap(),
+        client.get_balances(&["b", "1"]).unwrap(),
     ));
 
     // start thread to transfer money from account 0 to account 1
-    let accounts = client1.copy_all_accounts();
+    let accounts = client.copy_all_accounts();
     let transfer_quit = Arc::new(AtomicBool::new(false));
     let transfer_quit_clone = transfer_quit.clone();
     let transfer_thread = std::thread::spawn(|| {
-        transfer_and_reconfig(client1, 999999.0, 1000001.0, transfer_quit_clone)
+        transfer_and_reconfig(client, 999999.0, 1000001.0, transfer_quit_clone)
     });
 
     // make a backup from node 1
-    let node1_config =
-        NodeConfig::load(env.validator_swarm.config.config_files.get(1).unwrap()).unwrap();
+    let (node1_config, _) = load_node_config(&env.validator_swarm, 1);
     let backup_path = db_backup(node1_config.storage.backup_service_address.port(), 1, 50);
 
     // take down node 0
     env.validator_swarm.kill_node(0);
 
     // nuke db
-    let node0_config =
-        NodeConfig::load(env.validator_swarm.config.config_files.get(0).unwrap()).unwrap();
+    let (mut node0_config, _) = load_node_config(&env.validator_swarm, 0);
+    let genesis_waypoint = node0_config.base.waypoint.genesis_waypoint();
+    insert_waypoint(&mut node0_config, genesis_waypoint);
+    save_node_config(&mut node0_config, &env.validator_swarm, 0);
     let db_dir = node0_config.storage.dir();
     fs::remove_dir_all(db_dir.join("libradb")).unwrap();
     fs::remove_dir_all(db_dir.join("consensusdb")).unwrap();
@@ -98,26 +103,53 @@ fn test_db_restore() {
     ));
 }
 
+fn db_backup_verify(backup_path: &Path) {
+    let now = Instant::now();
+    let bin_path = workspace_builder::get_bin("db-backup-verify");
+    let metadata_cache_path = TempPath::new();
+
+    metadata_cache_path.create_as_dir().unwrap();
+
+    let output = Command::new(bin_path.as_path())
+        .current_dir(workspace_root())
+        .args(&[
+            "--metadata-cache-dir",
+            metadata_cache_path.path().to_str().unwrap(),
+            "local-fs",
+            "--dir",
+            backup_path.to_str().unwrap(),
+        ])
+        .output()
+        .unwrap();
+    if !output.status.success() {
+        panic!("db-backup-verify failed, output: {:?}", output);
+    }
+    println!("Backup verified in {} seconds.", now.elapsed().as_secs());
+}
+
 fn wait_for_backups(
     target_epoch: u64,
     target_version: u64,
     now: Instant,
-    bin_path: PathBuf,
-    metadata_cache_path2: &TempPath,
-    backup_path: &TempPath,
+    bin_path: &Path,
+    metadata_cache_path: &Path,
+    backup_path: &Path,
 ) -> Result<()> {
     for _ in 0..60 {
-        let output = Command::new(bin_path.as_path())
+        // the verify should always succeed.
+        db_backup_verify(backup_path);
+
+        let output = Command::new(bin_path)
             .current_dir(workspace_root())
             .args(&[
                 "one-shot",
                 "query",
                 "backup-storage-state",
                 "--metadata-cache-dir",
-                metadata_cache_path2.path().to_str().unwrap(),
+                metadata_cache_path.to_str().unwrap(),
                 "local-fs",
                 "--dir",
-                backup_path.path().to_str().unwrap(),
+                backup_path.to_str().unwrap(),
             ])
             .output()?
             .stdout;
@@ -175,9 +207,9 @@ fn db_backup(backup_service_port: u16, target_epoch: u64, target_version: Versio
         target_epoch,
         target_version,
         now,
-        bin_path,
-        &metadata_cache_path2,
-        &backup_path,
+        bin_path.as_path(),
+        metadata_cache_path2.path(),
+        backup_path.path(),
     );
     backup_coordinator.kill().unwrap();
     wait_res.unwrap();

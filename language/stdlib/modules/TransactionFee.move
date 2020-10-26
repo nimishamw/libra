@@ -1,11 +1,12 @@
 address 0x1 {
 
+/// Functions to initialize, accumulated, and burn transaction fees.
+
 module TransactionFee {
     use 0x1::CoreAddresses;
     use 0x1::Errors;
     use 0x1::Coin1::Coin1;
-    use 0x1::Coin2::Coin2;
-    use 0x1::LBR::{Self, LBR};
+    use 0x1::LBR;
     use 0x1::Libra::{Self, Libra, Preburn};
     use 0x1::Roles;
     use 0x1::LibraTimestamp;
@@ -16,10 +17,6 @@ module TransactionFee {
     resource struct TransactionFee<CoinType> {
         balance: Libra<CoinType>,
         preburn: Preburn<CoinType>,
-    }
-
-    spec module {
-        invariant [global] LibraTimestamp::is_operating() ==> is_initialized();
     }
 
     /// A `TransactionFee` resource is not in the required state
@@ -34,23 +31,18 @@ module TransactionFee {
         Roles::assert_treasury_compliance(tc_account);
         // accept fees in all the currencies
         add_txn_fee_currency<Coin1>(tc_account);
-        add_txn_fee_currency<Coin2>(tc_account);
-        add_txn_fee_currency<LBR>(tc_account);
     }
     spec fun initialize {
         include LibraTimestamp::AbortsIfNotGenesis;
         include Roles::AbortsIfNotTreasuryCompliance{account: tc_account};
         include AddTxnFeeCurrencyAbortsIf<Coin1>;
-        include AddTxnFeeCurrencyAbortsIf<Coin2>;
-        include AddTxnFeeCurrencyAbortsIf<LBR>;
         ensures is_initialized();
-        ensures transaction_fee<LBR>().balance.value == 0;
-        ensures transaction_fee<Coin1>().balance.value == 0;
-        ensures transaction_fee<Coin2>().balance.value == 0;
+        ensures spec_transaction_fee<Coin1>().balance.value == 0;
     }
     spec schema AddTxnFeeCurrencyAbortsIf<CoinType> {
         include Libra::AbortsIfNoCurrency<CoinType>;
-        aborts_if exists<TransactionFee<CoinType>>(CoreAddresses::TREASURY_COMPLIANCE_ADDRESS()) with Errors::ALREADY_PUBLISHED;
+        aborts_if exists<TransactionFee<CoinType>>(CoreAddresses::TREASURY_COMPLIANCE_ADDRESS())
+            with Errors::ALREADY_PUBLISHED;
     }
 
     fun is_coin_initialized<CoinType>(): bool {
@@ -58,16 +50,12 @@ module TransactionFee {
     }
 
     fun is_initialized(): bool {
-        is_coin_initialized<LBR>() && is_coin_initialized<Coin1>() && is_coin_initialized<Coin2>()
-    }
-
-    spec define transaction_fee<CoinType>(): TransactionFee<CoinType> {
-        borrow_global<TransactionFee<CoinType>>(CoreAddresses::TREASURY_COMPLIANCE_ADDRESS())
+        is_coin_initialized<Coin1>()
     }
 
     /// Sets ups the needed transaction fee state for a given `CoinType` currency by
-    /// (1) configuring `lr_account` to accept `CoinType`
-    /// (2) publishing a wrapper of the `Preburn<CoinType>` resource under `lr_account`
+    /// (1) configuring `tc_account` to accept `CoinType`
+    /// (2) publishing a wrapper of the `Preburn<CoinType>` resource under `tc_account`
     public fun add_txn_fee_currency<CoinType>(tc_account: &signer) {
         Libra::assert_is_currency<CoinType>();
         assert(
@@ -96,7 +84,7 @@ module TransactionFee {
     spec fun pay_fee {
         include LibraTimestamp::AbortsIfNotOperating;
         aborts_if !is_coin_initialized<CoinType>() with Errors::NOT_PUBLISHED;
-        let fees = transaction_fee<CoinType>().balance;
+        let fees = spec_transaction_fee<CoinType>().balance;
         include Libra::DepositAbortsIf<CoinType>{coin: fees, check: coin};
         ensures fees.value == old(fees.value) + coin.value;
     }
@@ -112,27 +100,9 @@ module TransactionFee {
         assert(is_coin_initialized<CoinType>(), Errors::not_published(ETRANSACTION_FEE));
         let tc_address = CoreAddresses::TREASURY_COMPLIANCE_ADDRESS();
         if (LBR::is_lbr<CoinType>()) {
-            // extract fees
-            let fees = borrow_global_mut<TransactionFee<LBR>>(tc_address);
-            let coins = Libra::withdraw_all<LBR>(&mut fees.balance);
-            let (coin1, coin2) = LBR::unpack(coins);
-            // burn
-            let coin1_burn_cap = Libra::remove_burn_capability<Coin1>(tc_account);
-            let coin2_burn_cap = Libra::remove_burn_capability<Coin2>(tc_account);
-            Libra::burn_now(
-                coin1,
-                &mut borrow_global_mut<TransactionFee<Coin1>>(tc_address).preburn,
-                tc_address,
-                &coin1_burn_cap
-            );
-            Libra::burn_now(
-                coin2,
-                &mut borrow_global_mut<TransactionFee<Coin2>>(tc_address).preburn,
-                tc_address,
-                &coin2_burn_cap
-            );
-            Libra::publish_burn_capability(tc_account, coin1_burn_cap);
-            Libra::publish_burn_capability(tc_account, coin2_burn_cap);
+            // TODO: Once the composition of LBR is determined fill this in to
+            // unpack and burn the backing coins of the LBR coin.
+            abort Errors::invalid_state(ETRANSACTION_FEE)
         } else {
             // extract fees
             let fees = borrow_global_mut<TransactionFee<CoinType>>(tc_address);
@@ -150,9 +120,7 @@ module TransactionFee {
     }
 
     spec fun burn_fees {
-        // Oddly, this times out in "cargo test" but works when the file is verified individually.
-        pragma verify = false;
-        /// Must abort if the account does not have the TreasuryCompliance role [B12].
+        /// Must abort if the account does not have the TreasuryCompliance role [[H3]][PERMISSION].
         include Roles::AbortsIfNotTreasuryCompliance{account: tc_account};
 
         include LibraTimestamp::AbortsIfNotOperating;
@@ -161,35 +129,44 @@ module TransactionFee {
 
         /// The correct amount of fees is burnt and subtracted from market cap.
         ensures Libra::spec_market_cap<CoinType>()
-            == old(Libra::spec_market_cap<CoinType>()) - old(transaction_fee<CoinType>().balance.value);
+            == old(Libra::spec_market_cap<CoinType>()) - old(spec_transaction_fee<CoinType>().balance.value);
         /// All the fees is burnt so the balance becomes 0.
-        ensures transaction_fee<CoinType>().balance.value == 0;
+        ensures spec_transaction_fee<CoinType>().balance.value == 0;
     }
-    /// Specification of the case where burn type is LBR.
+    /// STUB: To be filled in at a later date once the makeup of the LBR has been determined.
+    ///
+    /// # Specification of the case where burn type is LBR.
     spec schema BurnFeesLBR {
         tc_account: signer;
-        include Libra::AbortsIfNoBurnCapability<Coin1>{account: tc_account};
-        include Libra::AbortsIfNoBurnCapability<Coin2>{account: tc_account};
-        let lbr_fees = transaction_fee<LBR>();
-        include LBR::UnpackAbortsIf{coin: lbr_fees.balance};
-        let coin1_fees = transaction_fee<Coin1>();
-        let coin1 = Libra<Coin1>{value: LBR::spec_unpack_coin1(lbr_fees.balance)};
-        include Libra::BurnNowAbortsIf<Coin1>{coin: coin1, preburn: coin1_fees.preburn};
-        let coin2_fees = transaction_fee<Coin2>();
-        let coin2 = Libra<Coin2>{value: LBR::spec_unpack_coin2(lbr_fees.balance)};
-        include Libra::BurnNowAbortsIf<Coin2>{coin: coin2, preburn: coin2_fees.preburn};
+        aborts_if true with Errors::INVALID_STATE;
     }
-    /// Specification of the case where burn type is not LBR.
+    /// # Specification of the case where burn type is not LBR.
     spec schema BurnFeesNotLBR<CoinType> {
         tc_account: signer;
-        /// Must abort if the account does not have BurnCapability [B12].
+        /// Must abort if the account does not have BurnCapability [[H3]][PERMISSION].
         include Libra::AbortsIfNoBurnCapability<CoinType>{account: tc_account};
 
-        let fees = transaction_fee<CoinType>();
+        let fees = spec_transaction_fee<CoinType>();
         include Libra::BurnNowAbortsIf<CoinType>{coin: fees.balance, preburn: fees.preburn};
 
-        /// tc_account retrieves BurnCapability [B12]. BurnCapability is not transferrable [D12].
+        /// tc_account retrieves BurnCapability [[H3]][PERMISSION].
+        /// BurnCapability is not transferrable [[J3]][PERMISSION].
         ensures exists<Libra::BurnCapability<CoinType>>(Signer::spec_address_of(tc_account));
+    }
+
+    spec module {} // Switch documentation context to module level.
+
+    /// # Initialization
+
+    spec module {
+        /// If time has started ticking, then `TransactionFee` resources have been initialized.
+        invariant [global] LibraTimestamp::is_operating() ==> is_initialized();
+    }
+
+    /// # Helper Function
+
+    spec define spec_transaction_fee<CoinType>(): TransactionFee<CoinType> {
+        borrow_global<TransactionFee<CoinType>>(CoreAddresses::TREASURY_COMPLIANCE_ADDRESS())
     }
 }
 }

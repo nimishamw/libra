@@ -3,13 +3,13 @@
 
 use crate::{
     counters,
-    errors::JsonRpcError,
+    errors::{is_internal_error, JsonRpcError},
     methods::{build_registry, JsonRpcRequest, JsonRpcService, RpcRegistry},
     response::JsonRpcResponse,
 };
 use futures::future::join_all;
 use libra_config::config::{NodeConfig, RoleType};
-use libra_logger::{info, Level, Schema};
+use libra_logger::{debug, Level, Schema};
 use libra_mempool::MempoolClientSender;
 use libra_types::{chain_id::ChainId, ledger_info::LedgerInfoWithSignatures};
 use rand::{rngs::OsRng, RngCore};
@@ -18,6 +18,7 @@ use std::{net::SocketAddr, sync::Arc};
 use storage_interface::DbReader;
 use tokio::runtime::{Builder, Runtime};
 use warp::{
+    http::header,
     reject::{self, Reject},
     Filter,
 };
@@ -39,17 +40,18 @@ struct HttpRequestLog<'a> {
     user_agent: Option<&'a str>,
     #[schema(debug)]
     elapsed: std::time::Duration,
+    forwarded: Option<&'a str>,
 }
 
 #[derive(Schema)]
 struct RpcRequestLog {
-    trace_id: u64,
+    trace_id: String,
     request: Value,
 }
 
 #[derive(Schema)]
 struct RpcResponseLog<'a> {
-    trace_id: u64,
+    trace_id: String,
     is_batch: bool,
     response_error: bool,
     response: &'a JsonRpcResponse,
@@ -58,9 +60,9 @@ struct RpcResponseLog<'a> {
 #[macro_export]
 macro_rules! log_response {
     ($trace_id: expr, $resp: expr, $is_batch: expr) => {
-        let mut level = Level::Debug;
+        let mut level = Level::Trace;
         if let Some(ref error) = $resp.error {
-            if is_internal_error(error) {
+            if is_internal_error(&error.code) {
                 level = Level::Error
             }
         }
@@ -114,7 +116,7 @@ pub fn bootstrap(
         .and(warp::any().map(move || Arc::clone(&registry)))
         .and_then(rpc_endpoint)
         .with(warp::log::custom(|info| {
-            info!(HttpRequestLog {
+            debug!(HttpRequestLog {
                 remote_addr: info.remote_addr(),
                 method: info.method().to_string(),
                 path: info.path().to_string(),
@@ -122,8 +124,18 @@ pub fn bootstrap(
                 referer: info.referer(),
                 user_agent: info.user_agent(),
                 elapsed: info.elapsed(),
+                forwarded: info
+                    .request_headers()
+                    .get(header::FORWARDED)
+                    .and_then(|v| v.to_str().ok())
             })
-        }));
+        }))
+        .with(
+            warp::cors()
+                .allow_any_origin()
+                .allow_methods(vec!["POST"])
+                .allow_headers(vec![header::CONTENT_TYPE]),
+        );
 
     // For now we still allow user to use "/", but user should start to move to "/v1" soon
     let route_root = warp::path::end().and(base_route.clone());
@@ -158,10 +170,10 @@ pub fn bootstrap_from_config(
     mp_sender: MempoolClientSender,
 ) -> Runtime {
     bootstrap(
-        config.rpc.address,
-        config.rpc.batch_size_limit,
-        config.rpc.page_size_limit,
-        config.rpc.content_length_limit,
+        config.json_rpc.address,
+        config.json_rpc.batch_size_limit,
+        config.json_rpc.page_size_limit,
+        config.json_rpc.content_length_limit,
         libra_db,
         mp_sender,
         config.base.role,
@@ -201,9 +213,9 @@ async fn rpc_endpoint_without_metrics(
         .map_err(|_| reject::custom(DatabaseError))?;
 
     let mut rng = OsRng;
-    let trace_id = rng.next_u64();
-    info!(RpcRequestLog {
-        trace_id,
+    let trace_id = format!("{:x}", rng.next_u64());
+    debug!(RpcRequestLog {
+        trace_id: trace_id.clone(),
         request: data.clone(),
     });
 
@@ -218,12 +230,12 @@ async fn rpc_endpoint_without_metrics(
                         Arc::clone(&registry),
                         ledger_info.clone(),
                         LABEL_BATCH,
-                        trace_id,
+                        trace_id.clone(),
                     )
                 });
                 let responses = join_all(futures).await;
                 for resp in &responses {
-                    log_response!(trace_id, &resp, true);
+                    log_response!(trace_id.clone(), &resp, true);
                 }
                 warp::reply::json(&responses)
             }
@@ -234,15 +246,22 @@ async fn rpc_endpoint_without_metrics(
                     ledger_info.ledger_info().timestamp_usecs(),
                 );
                 set_response_error(&mut resp, err, LABEL_BATCH, "unknown");
-                log_response!(trace_id, &resp, true);
+                log_response!(trace_id.clone(), &resp, true);
 
                 warp::reply::json(&resp)
             }
         }
     } else {
         // single API call
-        let resp =
-            rpc_request_handler(data, service, registry, ledger_info, LABEL_SINGLE, trace_id).await;
+        let resp = rpc_request_handler(
+            data,
+            service,
+            registry,
+            ledger_info,
+            LABEL_SINGLE,
+            trace_id.clone(),
+        )
+        .await;
         log_response!(trace_id, &resp, false);
 
         warp::reply::json(&resp)
@@ -259,7 +278,7 @@ async fn rpc_request_handler(
     registry: Arc<RpcRegistry>,
     ledger_info: LedgerInfoWithSignatures,
     request_type_label: &str,
-    trace_id: u64,
+    trace_id: String,
 ) -> JsonRpcResponse {
     let request: Map<String, Value>;
     let mut response = JsonRpcResponse::new(
@@ -380,7 +399,7 @@ fn set_response_error(
     method: &str,
 ) {
     let err_code = error.code;
-    if is_internal_error(&error) {
+    if is_internal_error(&error.code) {
         counters::INTERNAL_ERRORS
             .with_label_values(&[request_type, method, &err_code.to_string()])
             .inc();
@@ -398,10 +417,6 @@ fn set_response_error(
     }
 
     response.error = Some(error);
-}
-
-fn is_internal_error(e: &JsonRpcError) -> bool {
-    e.code <= -32000 && e.code >= -32099
 }
 
 fn parse_request_id(request: &Map<String, Value>) -> Result<Value, JsonRpcError> {

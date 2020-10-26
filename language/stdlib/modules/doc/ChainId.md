@@ -3,13 +3,26 @@
 
 # Module `0x1::ChainId`
 
+The chain id distinguishes between different chains (e.g., testnet and the main Libra network).
+One important role is to prevent transactions intended for one chain from being executed on another.
+This code provides a container for storing a chain id and functions to initialize and get it.
 
 
--  [Resource <code><a href="ChainId.md#0x1_ChainId">ChainId</a></code>](#0x1_ChainId_ChainId)
--  [Const <code><a href="ChainId.md#0x1_ChainId_ECHAIN_ID">ECHAIN_ID</a></code>](#0x1_ChainId_ECHAIN_ID)
--  [Function <code>initialize</code>](#0x1_ChainId_initialize)
--  [Function <code>get</code>](#0x1_ChainId_get)
--  [Module Specification](#@Module_Specification_0)
+-  [Resource `ChainId`](#0x1_ChainId_ChainId)
+-  [Constants](#@Constants_0)
+-  [Function `initialize`](#0x1_ChainId_initialize)
+-  [Function `get`](#0x1_ChainId_get)
+-  [Module Specification](#@Module_Specification_1)
+    -  [Initialization](#@Initialization_2)
+    -  [Helper Functions](#@Helper_Functions_3)
+
+
+<pre><code><b>use</b> <a href="CoreAddresses.md#0x1_CoreAddresses">0x1::CoreAddresses</a>;
+<b>use</b> <a href="Errors.md#0x1_Errors">0x1::Errors</a>;
+<b>use</b> <a href="LibraTimestamp.md#0x1_LibraTimestamp">0x1::LibraTimestamp</a>;
+<b>use</b> <a href="Signer.md#0x1_Signer">0x1::Signer</a>;
+</code></pre>
+
 
 
 <a name="0x1_ChainId_ChainId"></a>
@@ -39,9 +52,12 @@
 
 </details>
 
-<a name="0x1_ChainId_ECHAIN_ID"></a>
+<a name="@Constants_0"></a>
 
-## Const `ECHAIN_ID`
+## Constants
+
+
+<a name="0x1_ChainId_ECHAIN_ID"></a>
 
 The <code><a href="ChainId.md#0x1_ChainId">ChainId</a></code> resource was not in the required state
 
@@ -79,6 +95,25 @@ Publish the chain ID <code>id</code> of this Libra instance under the LibraRoot 
 
 </details>
 
+<details>
+<summary>Specification</summary>
+
+
+
+<pre><code><b>pragma</b> opaque;
+<a name="0x1_ChainId_lr_addr$3"></a>
+<b>let</b> lr_addr = <a href="Signer.md#0x1_Signer_address_of">Signer::address_of</a>(lr_account);
+<b>modifies</b> <b>global</b>&lt;<a href="ChainId.md#0x1_ChainId">ChainId</a>&gt;(lr_addr);
+<b>include</b> <a href="LibraTimestamp.md#0x1_LibraTimestamp_AbortsIfNotGenesis">LibraTimestamp::AbortsIfNotGenesis</a>;
+<b>include</b> <a href="CoreAddresses.md#0x1_CoreAddresses_AbortsIfNotLibraRoot">CoreAddresses::AbortsIfNotLibraRoot</a>{account: lr_account};
+<b>aborts_if</b> <b>exists</b>&lt;<a href="ChainId.md#0x1_ChainId">ChainId</a>&gt;(lr_addr) <b>with</b> <a href="Errors.md#0x1_Errors_ALREADY_PUBLISHED">Errors::ALREADY_PUBLISHED</a>;
+<b>ensures</b> <b>exists</b>&lt;<a href="ChainId.md#0x1_ChainId">ChainId</a>&gt;(lr_addr);
+</code></pre>
+
+
+
+</details>
+
 <a name="0x1_ChainId_get"></a>
 
 ## Function `get`
@@ -105,10 +140,17 @@ Return the chain ID of this Libra instance
 
 </details>
 
-<a name="@Module_Specification_0"></a>
+<a name="@Module_Specification_1"></a>
 
 ## Module Specification
 
+
+
+<a name="@Initialization_2"></a>
+
+### Initialization
+
+When Libra is operating, the chain id is always available.
 
 
 <pre><code><b>invariant</b> [<b>global</b>] <a href="LibraTimestamp.md#0x1_LibraTimestamp_is_operating">LibraTimestamp::is_operating</a>() ==&gt; <b>exists</b>&lt;<a href="ChainId.md#0x1_ChainId">ChainId</a>&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_LIBRA_ROOT_ADDRESS">CoreAddresses::LIBRA_ROOT_ADDRESS</a>());
@@ -116,11 +158,22 @@ Return the chain ID of this Libra instance
 
 
 
+<a name="@Helper_Functions_3"></a>
+
+### Helper Functions
+
+
 
 <a name="0x1_ChainId_spec_get_chain_id"></a>
 
 
 <pre><code><b>define</b> <a href="ChainId.md#0x1_ChainId_spec_get_chain_id">spec_get_chain_id</a>(): u8 {
-    <b>global</b>&lt;<a href="ChainId.md#0x1_ChainId">ChainId</a>&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_LIBRA_ROOT_ADDRESS">CoreAddresses::LIBRA_ROOT_ADDRESS</a>()).id
+   <b>global</b>&lt;<a href="ChainId.md#0x1_ChainId">ChainId</a>&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_LIBRA_ROOT_ADDRESS">CoreAddresses::LIBRA_ROOT_ADDRESS</a>()).id
 }
 </code></pre>
+
+
+[//]: # ("File containing references which can be used from documentation")
+[ACCESS_CONTROL]: https://github.com/libra/lip/blob/master/lips/lip-2.md
+[ROLE]: https://github.com/libra/lip/blob/master/lips/lip-2.md#roles
+[PERMISSION]: https://github.com/libra/lip/blob/master/lips/lip-2.md#permissions

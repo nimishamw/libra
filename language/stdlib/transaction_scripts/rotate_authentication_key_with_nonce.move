@@ -22,6 +22,7 @@ use 0x1::SlidingNonce;
 /// # Common Abort Conditions
 /// | Error Category             | Error Reason                                               | Description                                                                                |
 /// | ----------------           | --------------                                             | -------------                                                                              |
+/// | `Errors::NOT_PUBLISHED`    | `SlidingNonce::ESLIDING_NONCE`                             | A `SlidingNonce` resource is not published under `account`.                                |
 /// | `Errors::INVALID_ARGUMENT` | `SlidingNonce::ENONCE_TOO_OLD`                             | The `sliding_nonce` is too old and it's impossible to determine if it's duplicated or not. |
 /// | `Errors::INVALID_ARGUMENT` | `SlidingNonce::ENONCE_TOO_NEW`                             | The `sliding_nonce` is too far in the future.                                              |
 /// | `Errors::INVALID_ARGUMENT` | `SlidingNonce::ENONCE_ALREADY_RECORDED`                    | The `sliding_nonce` has been previously recorded.                                          |
@@ -56,6 +57,11 @@ spec fun rotate_authentication_key_with_nonce {
     aborts_with [check]
         Errors::INVALID_ARGUMENT,
         Errors::INVALID_STATE,
-        Errors::NOT_PUBLISHED; // TOOD: Undocumented error code. Added due to the possible absence of SlidingNonce in SlidingNonce::try_record_nonce.
+        Errors::NOT_PUBLISHED;
+
+    /// **Access Control:**
+    /// The account can rotate its own authentication key unless
+    /// it has delegrated the capability [[H17]][PERMISSION][[J17]][PERMISSION].
+    include LibraAccount::AbortsIfDelegatedKeyRotationCapability;
 }
 }

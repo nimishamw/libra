@@ -42,6 +42,7 @@ use tokio::runtime::{Builder, Runtime};
 
 const AC_SMP_CHANNEL_BUFFER_SIZE: usize = 1_024;
 const INTRA_NODE_CHANNEL_BUFFER_SIZE: usize = 1;
+const MEMPOOL_NETWORK_CHANNEL_BUFFER_SIZE: usize = 1_024;
 
 pub struct LibraHandle {
     _rpc: Runtime,
@@ -84,7 +85,7 @@ pub fn start(config: &NodeConfig, log_file: Option<PathBuf>) {
     let logger = Some(logger.build());
 
     // Let's now log some important information, since the logger is set up
-    info!(config = config, "Loaded config");
+    info!(config = config, "Loaded LibraNode config");
 
     if config.metrics.enabled {
         for network in &config.full_node_networks {
@@ -164,8 +165,11 @@ pub fn load_test_environment(config_path: Option<PathBuf>, random_ports: bool) {
         test_config.libra_root_key_path
     );
     println!("\tWaypoint: {}", test_config.waypoint);
-    let config = NodeConfig::load(&test_config.config_files[0]).unwrap();
-    println!("\tJSON-RPC endpoint: {}", config.rpc.address);
+    let mut config = NodeConfig::load(&test_config.config_files[0]).unwrap();
+    config.json_rpc.address = format!("0.0.0.0:{}", config.json_rpc.address.port())
+        .parse()
+        .unwrap();
+    println!("\tJSON-RPC endpoint: {}", config.json_rpc.address);
     println!(
         "\tFullNode network: {}",
         config.full_node_networks[0].listen_address
@@ -219,6 +223,46 @@ fn setup_debug_interface(config: &NodeConfig, logger: Option<Arc<Logger>>) -> No
     NodeDebugService::new(addr, logger)
 }
 
+async fn periodic_state_dump(node_config: NodeConfig, db: DbReaderWriter) {
+    use futures::stream::StreamExt;
+
+    let args: Vec<String> = ::std::env::args().collect();
+
+    // Once an hour
+    let mut config_interval = tokio::time::interval(std::time::Duration::from_secs(60 * 60)).fuse();
+    // Once a minute
+    let mut version_interval = tokio::time::interval(std::time::Duration::from_secs(60)).fuse();
+
+    info!("periodic_state_dump task started");
+
+    loop {
+        futures::select! {
+            _ = config_interval.select_next_some() => {
+                info!(config = node_config, args = args, "config and command line arguments");
+            }
+            _ = version_interval.select_next_some() => {
+                let chain_id = fetch_chain_id(&db);
+                let ledger_info = if let Ok(ledger_info) = db.reader.get_latest_ledger_info() {
+                    ledger_info
+                } else {
+                    warn!("unable to query latest ledger info");
+                    continue;
+                };
+
+                let latest_ledger_verion = ledger_info.ledger_info().version();
+                let root_hash = ledger_info.ledger_info().transaction_accumulator_hash();
+
+                info!(
+                    chain_id = chain_id,
+                    latest_ledger_verion = latest_ledger_verion,
+                    root_hash = root_hash,
+                    "latest ledger version and its corresponding root hash"
+                );
+            }
+        }
+    }
+}
+
 pub fn setup_environment(node_config: &NodeConfig, logger: Option<Arc<Logger>>) -> LibraHandle {
     let debug_if = setup_debug_interface(&node_config, logger);
 
@@ -247,10 +291,10 @@ pub fn setup_environment(node_config: &NodeConfig, logger: Option<Arc<Logger>>) 
         Arc::clone(&libra_db),
     );
 
-    let waypoint = node_config.base.waypoint.waypoint();
+    let genesis_waypoint = node_config.base.waypoint.genesis_waypoint();
     // if there's genesis txn and waypoint, commit it if the result matches.
     if let Some(genesis) = get_genesis_txn(&node_config) {
-        maybe_bootstrap::<LibraVM>(&db_rw, genesis, waypoint)
+        maybe_bootstrap::<LibraVM>(&db_rw, genesis, genesis_waypoint)
             .expect("Db-bootstrapper should not fail.");
     }
 
@@ -311,11 +355,9 @@ pub fn setup_environment(node_config: &NodeConfig, logger: Option<Arc<Logger>>) 
         ));
 
         // Create the endpoints to connect the Network to mempool.
-        let (mempool_sender, mempool_events) =
-            network_builder.add_protocol_handler(libra_mempool::network::network_endpoint_config(
-                // TODO:  Make this configuration option more clear.
-                node_config.mempool.max_broadcasts_per_peer,
-            ));
+        let (mempool_sender, mempool_events) = network_builder.add_protocol_handler(
+            libra_mempool::network::network_endpoint_config(MEMPOOL_NETWORK_CHANNEL_BUFFER_SIZE),
+        );
         mempool_network_handles.push((
             NodeNetworkId::new(network_id, idx),
             mempool_sender,
@@ -347,9 +389,14 @@ pub fn setup_environment(node_config: &NodeConfig, logger: Option<Arc<Logger>>) 
 
     // Build the configured networks.
     for network_builder in &mut network_builders {
-        debug!("Creating runtime for {}", network_builder.network_context());
+        let network_context = network_builder.network_context();
+        debug!("Creating runtime for {}", network_context);
         let runtime = Builder::new()
-            .thread_name("network-")
+            .thread_name(format!(
+                "network-{}-{}",
+                network_context.role(),
+                network_context.network_id()
+            ))
             .threaded_scheduler()
             .enable_all()
             .build()
@@ -380,7 +427,7 @@ pub fn setup_environment(node_config: &NodeConfig, logger: Option<Arc<Logger>>) 
         Arc::clone(&db_rw.reader),
         chunk_executor,
         &node_config,
-        waypoint,
+        genesis_waypoint,
         reconfig_subscriptions,
     );
     let (mp_client_sender, mp_client_events) = channel(AC_SMP_CHANNEL_BUFFER_SIZE);
@@ -428,6 +475,12 @@ pub fn setup_environment(node_config: &NodeConfig, logger: Option<Arc<Logger>>) 
         ));
         debug!("Consensus started in {} ms", instant.elapsed().as_millis());
     }
+
+    // Spawn a task which will periodically dump some interesting state
+    debug_if
+        .runtime()
+        .handle()
+        .spawn(periodic_state_dump(node_config.to_owned(), db_rw));
 
     LibraHandle {
         network_runtimes,
