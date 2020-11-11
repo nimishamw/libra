@@ -394,6 +394,7 @@ reconfiguration. This function requires that the signer be Libra root.
 
 
 <pre><code><b>pragma</b> opaque;
+<b>modifies</b> <b>global</b>&lt;<a href="LibraConfig.md#0x1_LibraConfig_Configuration">Configuration</a>&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_LIBRA_ROOT_ADDRESS">CoreAddresses::LIBRA_ROOT_ADDRESS</a>());
 <b>include</b> <a href="LibraConfig.md#0x1_LibraConfig_SetAbortsIf">SetAbortsIf</a>&lt;Config&gt;;
 <b>include</b> <a href="LibraConfig.md#0x1_LibraConfig_SetEnsures">SetEnsures</a>&lt;Config&gt;;
 </code></pre>
@@ -435,6 +436,7 @@ reconfiguration. This function requires that the signer be Libra root.
     payload: Config;
     <b>ensures</b> <a href="LibraConfig.md#0x1_LibraConfig_spec_is_published">spec_is_published</a>&lt;Config&gt;();
     <b>ensures</b> <a href="LibraConfig.md#0x1_LibraConfig_get">get</a>&lt;Config&gt;() == payload;
+    <b>ensures</b> <b>old</b>(<a href="LibraConfig.md#0x1_LibraConfig_spec_has_config">spec_has_config</a>()) == <a href="LibraConfig.md#0x1_LibraConfig_spec_has_config">spec_has_config</a>();
 }
 </code></pre>
 
@@ -751,6 +753,7 @@ Private function to do reconfiguration.  Updates reconfiguration status resource
 
 <pre><code><b>pragma</b> opaque;
 <b>modifies</b> <b>global</b>&lt;<a href="LibraConfig.md#0x1_LibraConfig_Configuration">Configuration</a>&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_LIBRA_ROOT_ADDRESS">CoreAddresses::LIBRA_ROOT_ADDRESS</a>());
+<b>ensures</b> <b>old</b>(<a href="LibraConfig.md#0x1_LibraConfig_spec_has_config">spec_has_config</a>()) == <a href="LibraConfig.md#0x1_LibraConfig_spec_has_config">spec_has_config</a>();
 <a name="0x1_LibraConfig_config$18"></a>
 <b>let</b> config = <b>global</b>&lt;<a href="LibraConfig.md#0x1_LibraConfig_Configuration">Configuration</a>&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_LIBRA_ROOT_ADDRESS">CoreAddresses::LIBRA_ROOT_ADDRESS</a>());
 <a name="0x1_LibraConfig_now$19"></a>
@@ -911,6 +914,15 @@ Published configurations are persistent.
 
 <pre><code><b>invariant</b> <b>update</b> [<b>global</b>]
     (<b>forall</b> config_type: type <b>where</b> <b>old</b>(<a href="LibraConfig.md#0x1_LibraConfig_spec_is_published">spec_is_published</a>&lt;config_type&gt;()): <a href="LibraConfig.md#0x1_LibraConfig_spec_is_published">spec_is_published</a>&lt;config_type&gt;());
+</code></pre>
+
+
+If <code><a href="LibraConfig.md#0x1_LibraConfig_ModifyConfigCapability">ModifyConfigCapability</a>&lt;Config&gt;</code> is published, it is persistent.
+
+
+<pre><code><b>invariant</b> <b>update</b> [<b>global</b>] <b>forall</b> config_type: type
+    <b>where</b> <b>old</b>(<b>exists</b>&lt;<a href="LibraConfig.md#0x1_LibraConfig_ModifyConfigCapability">ModifyConfigCapability</a>&lt;config_type&gt;&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_LIBRA_ROOT_ADDRESS">CoreAddresses::LIBRA_ROOT_ADDRESS</a>())):
+        <b>exists</b>&lt;<a href="LibraConfig.md#0x1_LibraConfig_ModifyConfigCapability">ModifyConfigCapability</a>&lt;config_type&gt;&gt;(<a href="CoreAddresses.md#0x1_CoreAddresses_LIBRA_ROOT_ADDRESS">CoreAddresses::LIBRA_ROOT_ADDRESS</a>());
 </code></pre>
 
 

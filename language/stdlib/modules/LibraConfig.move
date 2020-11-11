@@ -117,6 +117,7 @@ module LibraConfig {
     }
     spec fun set {
         pragma opaque;
+        modifies global<Configuration>(CoreAddresses::LIBRA_ROOT_ADDRESS());
         include SetAbortsIf<Config>;
         include SetEnsures<Config>;
     }
@@ -135,6 +136,7 @@ module LibraConfig {
         payload: Config;
         ensures spec_is_published<Config>();
         ensures get<Config>() == payload;
+        ensures old(spec_has_config()) == spec_has_config();
     }
 
     /// Set a config item to a new value and trigger a reconfiguration. This function
@@ -284,7 +286,7 @@ module LibraConfig {
     spec fun reconfigure_ {
         pragma opaque;
         modifies global<Configuration>(CoreAddresses::LIBRA_ROOT_ADDRESS());
-
+        ensures old(spec_has_config()) == spec_has_config();
         let config = global<Configuration>(CoreAddresses::LIBRA_ROOT_ADDRESS());
         let now = LibraTimestamp::spec_now_microseconds();
         let epoch = config.epoch;
@@ -365,6 +367,11 @@ module LibraConfig {
         /// Published configurations are persistent.
         invariant update [global]
             (forall config_type: type where old(spec_is_published<config_type>()): spec_is_published<config_type>());
+
+        /// If `ModifyConfigCapability<Config>` is published, it is persistent.
+        invariant update [global] forall config_type: type
+            where old(exists<ModifyConfigCapability<config_type>>(CoreAddresses::LIBRA_ROOT_ADDRESS())):
+                exists<ModifyConfigCapability<config_type>>(CoreAddresses::LIBRA_ROOT_ADDRESS());
     }
 
     /// # Helper Functions

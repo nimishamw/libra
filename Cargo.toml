@@ -13,7 +13,6 @@ members = [
     "common/crash-handler",
     "common/datatest-stable",
     "common/debug-interface",
-    "common/futures-semaphore",
     "common/infallible",
     "common/lcs",
     "common/libradoc",
@@ -26,7 +25,6 @@ members = [
     "common/proptest-helpers",
     "common/retrier",
     "common/short-hex-str",
-    "common/stream-ratelimiter",
     "common/subscription-service",
     "common/temppath",
     "common/trace",
@@ -66,6 +64,7 @@ members = [
     "language/compiler/ir-to-bytecode/syntax",
     "language/e2e-testsuite",
     "language/ir-testsuite",
+    "language/libra-tools/libra-events-fetcher",
     "language/libra-tools/libra-validator-interface",
     "language/libra-tools/transaction-replay",
     "language/libra-tools/writeset-transaction-generator",
@@ -128,6 +127,7 @@ members = [
     "storage/inspector",
     "storage/jellyfish-merkle",
     "storage/libradb",
+    "storage/librarian",
     "storage/schemadb",
     "storage/scratchpad",
     "storage/state-view",
@@ -172,6 +172,7 @@ default-members = [
     "language/tools/genesis-viewer",
     "language/tools/move-cli",
     "language/tools/move-coverage",
+    "language/libra-tools/libra-events-fetcher",
     "language/libra-tools/transaction-replay",
     "language/libra-tools/writeset-transaction-generator",
     "language/tools/move-explain",
@@ -180,6 +181,7 @@ default-members = [
     "secure/key-manager",
     "storage/backup/backup-cli",
     "storage/inspector",
+    "storage/librarian",
 ]
 
 [profile.release]
